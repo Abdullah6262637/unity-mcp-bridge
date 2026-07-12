@@ -971,12 +971,24 @@ async function executeUnityTool(name, args) {
             body: JSON.stringify(args)
         });
         const result = await response.json();
+        
+        let innerData = result;
         // If wrapped in a C# dispatcher response envelope, unwrap the inner tool data
         if (result && result.hasOwnProperty('data') && result.data !== null) {
-            return result.data;
+            innerData = result.data;
         }
-        return result;
+
+        // Forward C# tool execution warnings/errors to command line terminal
+        if (innerData && innerData.success === false && innerData.error) {
+            if (window.electronAPI && window.electronAPI.logToTerminal) {
+                window.electronAPI.logToTerminal('warn', `Unity Tool Hatası (${name}): ${innerData.error}`);
+            }
+        }
+        return innerData;
     } catch (err) {
+        if (window.electronAPI && window.electronAPI.logToTerminal) {
+            window.electronAPI.logToTerminal('error', `Unity Bağlantı Hatası (${name}): ${err.message}`);
+        }
         return { success: false, error: `Unity bağlantı hatası: ${err.message}` };
     }
 }
@@ -1044,6 +1056,9 @@ async function handleSendMessage() {
         }
     } catch (error) {
         appendMessage('assistant', `⚠️ Hata oluştu: ${error.message}`);
+        if (window.electronAPI && window.electronAPI.logToTerminal) {
+            window.electronAPI.logToTerminal('error', `Sohbet İşlem Hatası: ${error.message}`);
+        }
     } finally {
         isChatActive = false;
         sendBtn.disabled = false;

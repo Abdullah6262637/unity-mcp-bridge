@@ -53,6 +53,18 @@ ipcMain.on('window-close', () => {
     if (win) win.close();
 });
 
+// Forward UI errors and warnings to command line terminal
+ipcMain.on('log-to-terminal', (event, { level, message }) => {
+    const timestamp = new Date().toLocaleTimeString();
+    if (level === 'error') {
+        console.error(`\x1b[31m[${timestamp}] [ERROR] ${message}\x1b[0m`);
+    } else if (level === 'warn') {
+        console.warn(`\x1b[33m[${timestamp}] [WARN]  ${message}\x1b[0m`);
+    } else {
+        console.log(`\x1b[36m[${timestamp}] [INFO]  ${message}\x1b[0m`);
+    }
+});
+
 app.whenReady().then(() => {
     createWindow();
 
