@@ -10,7 +10,7 @@ body {
     font-family: 'Outfit', sans-serif;
     height: 100vh;
     overflow: hidden;
-    background-color: #ffffff;
+    background-color: #0b0f19;
 }
 
 .app-workspace {
@@ -19,13 +19,14 @@ body {
     height: 100vh;
     position: relative;
     overflow: hidden;
+    background-color: #0b0f19;
 }
 
 .inspector-pane {
     flex: 1;
     height: 100%;
     width: 100%;
-    background: #ffffff;
+    background: #0b0f19;
     overflow: hidden;
 }
 
@@ -42,14 +43,14 @@ body {
     left: 0;
     width: 300px;
     height: 100%;
-    background: #ffffff;
-    border-right: 1px solid #e2e8f0;
+    background: #111827;
+    border-right: 1px solid #1f2937;
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
 }
 
 .settings-drawer.open {
@@ -58,7 +59,7 @@ body {
 
 .drawer-header {
     padding: 16px 20px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #1f2937;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -67,20 +68,20 @@ body {
 .drawer-header h3 {
     font-size: 14px;
     font-weight: 600;
-    color: #0f172a;
+    color: #f8fafc;
 }
 
 .drawer-close-btn {
     border: none;
     background: transparent;
     font-size: 20px;
-    color: #94a3b8;
+    color: #64748b;
     cursor: pointer;
     line-height: 1;
 }
 
 .drawer-close-btn:hover {
-    color: #0f172a;
+    color: #f8fafc;
 }
 
 .settings-box {
@@ -99,16 +100,16 @@ body {
 .input-group label {
     font-size: 11px;
     font-weight: 600;
-    color: #64748b;
+    color: #94a3b8;
     text-transform: uppercase;
 }
 
 .input-group input, .input-group select {
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
+    background: #0b0f19;
+    border: 1px solid #374151;
     padding: 8px 12px;
     border-radius: 6px;
-    color: #0f172a;
+    color: #f8fafc;
     font-family: inherit;
     font-size: 13px;
     outline: none;
@@ -116,6 +117,6 @@ body {
 }
 
 .input-group input:focus, .input-group select:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }

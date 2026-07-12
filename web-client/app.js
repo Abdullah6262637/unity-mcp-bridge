@@ -67,8 +67,62 @@ function getTabClasses(headerContainer) {
     return { activeClass, inactiveClass };
 }
 
-// Injected CSS Styles inside the IFrame
+// Injected CSS Styles inside the IFrame (With complete dark-mode overrides for the Inspector)
 const INJECTED_CSS = `
+    /* --- MCP Inspector Dark Theme Overrides --- */
+    body {
+        background-color: #0b0f19 !important;
+        color: #f8fafc !important;
+    }
+    
+    /* Overriding main container backgrounds */
+    .bg-white, [class*="bg-white"], .bg-slate-50, .bg-gray-50, [class*="bg-slate-50"] {
+        background-color: #111827 !important;
+    }
+    
+    .bg-slate-100, .bg-gray-100, .bg-slate-200/50 {
+        background-color: #1f2937 !important;
+    }
+    
+    /* Headers & Panel surfaces */
+    header, [class*="border-b"], .border-slate-200, .border-gray-200, [class*="border-slate-200"], [class*="border-gray-200"] {
+        border-color: #1f2937 !important;
+    }
+    
+    /* Text colors */
+    .text-slate-900, .text-gray-900, [class*="text-slate-900"] {
+        color: #f8fafc !important;
+    }
+    
+    .text-slate-500, .text-slate-600, .text-gray-500, [class*="text-slate-500"] {
+        color: #94a3b8 !important;
+    }
+    
+    .text-slate-400, .text-gray-400 {
+        color: #64748b !important;
+    }
+
+    /* Buttons inside the inspector */
+    button {
+        color: #cbd5e1 !important;
+    }
+    
+    button:hover {
+        background-color: #1f2937 !important;
+    }
+    
+    /* Inputs inside the inspector */
+    input, select, textarea {
+        background-color: #0b0f19 !important;
+        border-color: #374151 !important;
+        color: #f8fafc !important;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+    }
+
     /* Custom light-themed scrollbars inside the iframe */
     ::-webkit-scrollbar {
         width: 6px;
@@ -80,39 +134,40 @@ const INJECTED_CSS = `
     }
     
     ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
+        background: #374151 !important;
         border-radius: 3px;
         transition: background 0.3s;
     }
     
     ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
+        background: #4b5563 !important;
     }
 
+    /* --- Custom Chat Pane Styling --- */
     .custom-chat-pane {
         display: flex;
         flex-direction: column;
         height: 100%;
         width: 100%;
-        background: #ffffff;
+        background: #111827;
         font-family: inherit;
     }
     
     .chat-header {
         height: 50px;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid #1f2937;
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0 16px;
         flex-shrink: 0;
-        background: #ffffff;
+        background: #111827;
     }
     
     .chat-header h2 {
         font-size: 13px;
         font-weight: 600;
-        color: #0f172a;
+        color: #f8fafc;
     }
     
     .chat-feed {
@@ -122,7 +177,7 @@ const INJECTED_CSS = `
         display: flex;
         flex-direction: column;
         gap: 12px;
-        background: #f8fafc;
+        background: #0b0f19;
     }
     
     .message-row {
@@ -144,20 +199,20 @@ const INJECTED_CSS = `
         border-radius: 8px;
         line-height: 1.5;
         font-size: 13px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
     
     .message-row.user .bubble {
-        background: #dbeafe;
-        color: #1e40af;
-        border: 1px solid #bfdbfe;
+        background: #1e3b8b;
+        color: #f0f7ff;
+        border: 1px solid #2563eb;
         border-bottom-right-radius: 2px;
     }
     
     .message-row.assistant .bubble {
-        background: #ffffff;
-        color: #0f172a;
-        border: 1px solid #e2e8f0;
+        background: #1f2937;
+        color: #f8fafc;
+        border: 1px solid #2d3748;
         border-bottom-left-radius: 2px;
     }
     
@@ -171,19 +226,19 @@ const INJECTED_CSS = `
     .bubble code {
         font-family: monospace;
         font-size: 11px;
-        background: #f1f5f9;
+        background: #0b0f19;
         padding: 2px 4px;
         border-radius: 3px;
-        color: #0f172a;
+        color: #e2e8f0;
     }
     
     .bubble pre {
-        background: #f8fafc;
+        background: #0b0f19;
         padding: 8px;
         border-radius: 6px;
         overflow-x: auto;
         margin: 6px 0;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #1f2937;
     }
     
     .bubble pre code {
@@ -194,20 +249,20 @@ const INJECTED_CSS = `
     
     .input-area {
         padding: 12px;
-        border-top: 1px solid #e2e8f0;
+        border-top: 1px solid #1f2937;
         display: flex;
         gap: 8px;
-        background: #ffffff;
+        background: #111827;
         flex-shrink: 0;
     }
     
     .chat-input {
         flex: 1;
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
+        background: #0b0f19;
+        border: 1px solid #374151;
         border-radius: 6px;
         padding: 8px 10px;
-        color: #0f172a;
+        color: #f8fafc;
         font-family: inherit;
         font-size: 13px;
         outline: none;
@@ -218,7 +273,7 @@ const INJECTED_CSS = `
     }
     
     .chat-input:focus {
-        border-color: #2563eb;
+        border-color: #3b82f6;
     }
     
     .send-btn {
@@ -246,9 +301,9 @@ const INJECTED_CSS = `
     }
     
     .chat-action-btn {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        color: #475569;
+        background: #1f2937;
+        border: 1px solid #374151;
+        color: #cbd5e1;
         padding: 4px 8px;
         font-size: 11px;
         font-weight: 600;
@@ -261,23 +316,23 @@ const INJECTED_CSS = `
     }
     
     .chat-action-btn:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        color: #0f172a;
+        background: #2d3748;
+        border-color: #4b5563;
+        color: #ffffff;
     }
     
     .mode-toggle-container {
-        background: #f1f5f9;
+        background: #1f2937;
         padding: 2px;
         border-radius: 12px;
         display: flex;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #374151;
     }
     
     .mode-btn {
         border: none;
         background: transparent;
-        color: #475569;
+        color: #94a3b8;
         padding: 4px 12px;
         font-size: 11px;
         font-weight: 600;
@@ -304,14 +359,14 @@ const INJECTED_CSS = `
     .tool-execution-box {
         width: 100%;
         margin-top: 6px;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: #1f2937;
+        border: 1px solid #2d3748;
         border-radius: 6px;
         overflow: hidden;
     }
     
     .tool-header {
-        background: #f8fafc;
+        background: #111827;
         padding: 4px 8px;
         font-size: 10px;
         font-weight: 600;
@@ -319,16 +374,16 @@ const INJECTED_CSS = `
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #e2e8f0;
-        color: #475569;
+        border-bottom: 1px solid #2d3748;
+        color: #cbd5e1;
     }
     
     .tool-header .tool-status {
-        color: #059669;
+        color: #10b981;
     }
     
     .tool-header .tool-status.running {
-        color: #2563eb;
+        color: #3b82f6;
     }
     
     .tool-body {
@@ -338,14 +393,14 @@ const INJECTED_CSS = `
         max-height: 100px;
         overflow-y: auto;
         white-space: pre-wrap;
-        background: #fafafa;
-        color: #334155;
+        background: #0b0f19;
+        color: #94a3b8;
     }
     
     .plan-confirmation-box {
         margin-top: 8px;
-        background: #faf5ff;
-        border: 1px solid #e9d5ff;
+        background: #2e1065;
+        border: 1px solid #4c1d95;
         border-radius: 6px;
         padding: 10px;
         display: flex;
@@ -358,12 +413,12 @@ const INJECTED_CSS = `
     .plan-confirmation-box h4 {
         font-size: 12px;
         font-weight: 600;
-        color: #6b21a8;
+        color: #ddd6fe;
     }
     
     .plan-confirmation-box p {
         font-size: 10px;
-        color: #475569;
+        color: #a78bfa;
     }
     
     .plan-confirm-btn {
