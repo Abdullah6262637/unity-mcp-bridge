@@ -69,6 +69,26 @@ function getTabClasses(headerContainer) {
 
 // Injected CSS Styles inside the IFrame
 const INJECTED_CSS = `
+    /* Custom light-themed scrollbars inside the iframe */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+        transition: background 0.3s;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
     .custom-chat-pane {
         display: flex;
         flex-direction: column;
@@ -736,7 +756,7 @@ function startIntegrationLoop() {
 
         const buttons = Array.from(doc.querySelectorAll('button'));
         // Find the Tools button inside the inspector's header row
-        const toolsBtn = buttons.find(b => b.textContent.trim() === 'Tools');
+        const toolsBtn = buttons.find(b => b.textContent.trim().includes('Tools'));
         
         if (toolsBtn) {
             clearInterval(interval);
@@ -852,7 +872,7 @@ function setupIntegratedChat(doc, toolsBtn) {
     const observer = new MutationObserver(() => {
         // Verify custom chat button is still in DOM
         if (!doc.getElementById('customChatTabBtn')) {
-            const currentToolsBtn = Array.from(headerContainer.querySelectorAll('button')).find(b => b.textContent.trim() === 'Tools');
+            const currentToolsBtn = Array.from(headerContainer.querySelectorAll('button')).find(b => b.textContent.trim().includes('Tools'));
             if (currentToolsBtn) {
                 currentToolsBtn.parentNode.insertBefore(chatTabBtn, currentToolsBtn.nextSibling);
             }
