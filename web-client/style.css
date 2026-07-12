@@ -1,8 +1,14 @@
 @font-face {
-    font-family: 'Interwoven';
-    src: url('Interwoven.ttf') format('truetype'),
-         url('Interwoven.otf') format('opentype');
+    font-family: 'LT Internet';
+    src: url('LTInternet-Regular.ttf') format('truetype');
     font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'LT Internet';
+    src: url('LTInternet-Bold.ttf') format('truetype');
+    font-weight: bold;
     font-style: normal;
 }
 
@@ -139,7 +145,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Interwoven', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-family: 'LT Internet', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 /* Retain monospace alignment for logs and code blocks */
@@ -148,7 +154,7 @@ code, pre, pre code, .console-logs, .log-stack, .tool-body {
 }
 
 body {
-    font-family: 'Interwoven', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    font-family: 'LT Internet', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     background-color: var(--bg-canvas);
     color: var(--text-primary);
     height: 100vh;
