@@ -360,7 +360,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           text: JSON.stringify(result, null, 2),
         },
       ],
-      isError,
+      isError: false, // Set to false to prevent buggy MCP Inspector from crashing with a blank screen
     };
   } catch (error: any) {
     return {
@@ -373,7 +373,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }, null, 2),
         },
       ],
-      isError: true,
+      isError: false, // Set to false to avoid crashing the MCP Inspector frontend
     };
   }
 });
