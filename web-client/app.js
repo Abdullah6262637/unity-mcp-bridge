@@ -126,11 +126,14 @@ chatInput.addEventListener('input', () => {
 
 // --- Refresh Hierarchy ---
 async function refreshHierarchy() {
-    hierarchyTree.innerHTML = '<p class="empty-state">Hiyerarşi güncelleniyor...</p>';
+    const hasData = hierarchyTree.querySelector('.tree-node') !== null;
+    if (!hasData) {
+        hierarchyTree.innerHTML = '<p class="empty-state">Hiyerarşi güncelleniyor...</p>';
+    }
     const data = await executeUnityTool('get_scene_hierarchy', {});
     if (data && data.success && data.hierarchy) {
         renderHierarchy(data.hierarchy);
-    } else {
+    } else if (!hasData) {
         let errMsg = '';
         if (data) {
             if (data.error) errMsg = ` (Hata: ${data.error})`;
@@ -284,16 +287,21 @@ let allAssetsCached = [];
 
 async function refreshAssets() {
     const assetsList = document.getElementById('assetsList');
-    assetsList.innerHTML = '<p class="empty-state">Assetler güncelleniyor...</p>';
+    const hasData = assetsList.querySelector('.asset-row') !== null;
     
     const filterInput = document.getElementById('assetsSearchInput');
     const filterVal = filterInput ? filterInput.value.trim() : '';
+    
+    // Only show loading spinner on the first render or if search input is cleared
+    if (!hasData && filterVal === '') {
+        assetsList.innerHTML = '<p class="empty-state">Assetler güncelleniyor...</p>';
+    }
     
     const data = await executeUnityTool('list_assets', { folder_path: 'Assets', filter: filterVal });
     if (data && data.success && data.assets) {
         allAssetsCached = data.assets;
         renderAssets(data.assets);
-    } else {
+    } else if (!hasData) {
         let errMsg = '';
         if (data) {
             if (data.error) errMsg = ` (Hata: ${data.error})`;
@@ -894,6 +902,30 @@ function appendToolBox(name, args) {
         },
         appendOutput: (output) => {
             body.textContent += `\n\nYanıt:\n${JSON.stringify(output, null, 2)}`;
+            
+            // If the response contains a base64 screenshot, render it inside the tool box in the chat feed
+            if (output && output.image_base64) {
+                const img = document.createElement('img');
+                img.className = 'screenshot-image';
+                img.style.maxWidth = '100%';
+                img.style.marginTop = '12px';
+                img.style.border = '1px solid var(--border-color)';
+                img.style.borderRadius = '10px';
+                img.src = `data:image/png;base64,${output.image_base64}`;
+                body.appendChild(img);
+                
+                // Also update the Camera Tab container inside the dashboard
+                const screenshotContainer = document.getElementById('screenshotContainer');
+                if (screenshotContainer) {
+                    screenshotContainer.innerHTML = '';
+                    const mainImg = img.cloneNode(true);
+                    mainImg.style.maxWidth = '100%';
+                    mainImg.style.marginTop = '0';
+                    mainImg.style.border = 'none';
+                    mainImg.style.borderRadius = '0';
+                    screenshotContainer.appendChild(mainImg);
+                }
+            }
             chatFeed.scrollTop = chatFeed.scrollHeight;
         }
     };
