@@ -3,6 +3,12 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "`n[Desktop Boot] Starting Unity AI Desktop Workspace..." -ForegroundColor Cyan
 
+# Force terminate any stale background inspector or server processes holding locks
+try {
+    Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*inspector*" -or $_.CommandLine -like "*index.js*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    Start-Sleep -Milliseconds 500
+} catch {}
+
 # 1. Build C# / TS Server (Only if not already compiled)
 if (-not (Test-Path "$PSScriptRoot\mcp-server\dist\index.js")) {
     Write-Host "[Desktop Boot] Compiling TypeScript server..."
