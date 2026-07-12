@@ -107,8 +107,9 @@ clearChatBtn.addEventListener('click', () => {
     chatFeed.innerHTML = `
         <div class="message-row assistant">
             <div class="bubble">
-                <p>Sohbet geçmişi temizlendi! 🧹 Yeni bir çalışma başlatabilirsiniz.</p>
-                <p>Şu anda **${currentMode === 'plan' ? 'Plan' : 'Build'} Modu**'ndayım.</p>
+                <p><strong>Sohbet Geçmişi Temizlendi 🧹</strong></p>
+                <p>Yeni bir çalışma başlatabilirsiniz. Ben, Unity Editör oturumunuza doğrudan entegre edilmiş gelişmiş yapay zeka geliştirme asistanınızım. Sahne hiyerarşisini kontrol edebilir, C# scriptleri yazıp düzenleyebilir, fizik/bileşen ayarlarını yönetebilir ve testler çalıştırabilirim.</p>
+                <p>Şu anda <strong>${currentMode === 'plan' ? 'PLAN MODU' : 'BUILD MODU'}</strong>'ndayım. Hedefinizi yazın; proje durumunu inceleyip onayınız için adım adım bir checklist hazırlayayım.</p>
             </div>
         </div>
     `;
