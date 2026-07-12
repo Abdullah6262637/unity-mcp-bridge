@@ -98,3 +98,14 @@ export const WaitConditionSchema = z.object({
   value: z.string().describe('The target value to compare against (e.g., "10", "true").'),
   timeout_ms: z.number().optional().default(5000).describe('Maximum timeout in milliseconds (default: 5000, max: 10000).'),
 });
+
+export const DownloadAssetSchema = z.object({
+  url: z.string().describe('The public direct download URL of the asset.'),
+  save_path: z.string().describe('The destination path under Assets/ (e.g., Assets/Models/car.obj).'),
+});
+
+export const ManagePackageSchema = z.object({
+  action: z.enum(['install', 'remove', 'list']).describe('The package manager action.'),
+  package_name: z.string().optional().describe('The package ID (e.g., com.unity.probuilder) - only required for install/remove actions.'),
+});
+

@@ -333,6 +333,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ['gameobject_path', 'component_type', 'member_name', 'op', 'value']
         }
+      },
+      {
+        name: 'download_asset',
+        description: 'Downloads an asset file (e.g. .obj, .fbx, .png, or .unitypackage) from a public URL directly into the Assets/ folder and imports it.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'The public direct download URL of the asset.' },
+            save_path: { type: 'string', description: 'The destination path under Assets/ (e.g. Assets/Models/car.obj).' }
+          },
+          required: ['url', 'save_path']
+        }
+      },
+      {
+        name: 'manage_package',
+        description: 'Manages Unity Package Manager packages (installs, removes, or lists packages). Use com.unity.probuilder for 3D modeling, com.unity.cinemachine for cameras, com.unity.ugui for UI, etc.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['install', 'remove', 'list'], description: 'The package manager action.' },
+            package_name: { type: 'string', description: 'The package ID (e.g. com.unity.probuilder) - only required for install/remove actions.' }
+          },
+          required: ['action']
+        }
       }
     ]
   };
@@ -407,6 +431,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case 'wait_for_condition':
         validatedArgs = schemas.WaitConditionSchema.parse(args);
+        break;
+      case 'download_asset':
+        validatedArgs = schemas.DownloadAssetSchema.parse(args);
+        break;
+      case 'manage_package':
+        validatedArgs = schemas.ManagePackageSchema.parse(args);
         break;
       // get_scene_hierarchy, get_compile_status, get_project_info have no schema parameters
     }
