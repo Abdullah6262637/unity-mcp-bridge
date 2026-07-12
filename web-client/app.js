@@ -7,6 +7,7 @@ const UNITY_URL = 'http://127.0.0.1:8090';
 let currentMode = 'plan'; // 'plan' or 'build'
 let isChatActive = false;
 let messageHistory = [];
+let currentChatId = null;
 let activeDashboardTab = 'hierarchy'; // 'hierarchy', 'console', 'camera'
 
 // --- Custom Titlebar Window Controls Binding ---
@@ -1137,14 +1138,24 @@ async function handleSendMessage() {
         isChatActive = false;
         sendBtn.disabled = false;
         
-        // Prune intermediate tool details to save LLM context window space and avoid limit failures
-        messageHistory = messageHistory.filter(msg => msg.role === 'user' || (msg.role === 'assistant' && msg.content));
+        // Filter out intermediate tool result messages, and strip tool_calls from assistant messages
+        messageHistory = messageHistory
+            .filter(msg => msg.role === 'user' || (msg.role === 'assistant' && msg.content))
+            .map(msg => {
+                if (msg.role === 'assistant' && msg.tool_calls) {
+                    return { role: 'assistant', content: msg.content };
+                }
+                return msg;
+            });
 
         // Keep only the last 14 messages (approx. 7 turns) to prevent 400 Bad Request Context Limit Exceeded errors
         const MAX_HISTORY = 14;
         if (messageHistory.length > MAX_HISTORY) {
             messageHistory = messageHistory.slice(messageHistory.length - MAX_HISTORY);
         }
+
+        // Auto-save the current conversation history state
+        saveCurrentChat();
 
         // Auto refresh hierarchy after tools execution loop ends
         setTimeout(refreshHierarchy, 1000);
@@ -1321,3 +1332,190 @@ async function runBuildProcess() {
         messageHistory.push({ role: 'assistant', content: fallbackMsg });
     }
 }
+
+// --- Chat History / Saved Conversations Implementation ---
+function saveCurrentChat() {
+    if (!messageHistory || messageHistory.length === 0) return;
+
+    // Retrieve saved chats
+    let savedConversations = [];
+    try {
+        const raw = localStorage.getItem('unity_studio_saved_chats');
+        if (raw) savedConversations = JSON.parse(raw);
+    } catch (e) {
+        savedConversations = [];
+    }
+
+    // If active chat is new, generate an ID
+    if (!currentChatId) {
+        currentChatId = Date.now().toString();
+    }
+
+    // Try to find if this chat already exists
+    let existingChat = savedConversations.find(c => c.id === currentChatId);
+
+    // Compute title based on the first user message
+    let title = "Yeni Sohbet";
+    const firstUserMsg = messageHistory.find(m => m.role === 'user');
+    if (firstUserMsg && firstUserMsg.content) {
+        title = firstUserMsg.content.substring(0, 30);
+        if (firstUserMsg.content.length > 30) title += "...";
+    }
+
+    if (existingChat) {
+        existingChat.title = title;
+        existingChat.history = messageHistory;
+        existingChat.mode = currentMode;
+        existingChat.timestamp = Date.now();
+    } else {
+        savedConversations.push({
+            id: currentChatId,
+            title: title,
+            history: messageHistory,
+            mode: currentMode,
+            timestamp: Date.now()
+        });
+    }
+
+    // Sort by most recent timestamp
+    savedConversations.sort((a, b) => b.timestamp - a.timestamp);
+
+    localStorage.setItem('unity_studio_saved_chats', JSON.stringify(savedConversations));
+    renderSavedChatsList();
+}
+
+function renderSavedChatsList() {
+    const listContainer = document.getElementById('savedChatsList');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+
+    let savedConversations = [];
+    try {
+        const raw = localStorage.getItem('unity_studio_saved_chats');
+        if (raw) savedConversations = JSON.parse(raw);
+    } catch (e) {
+        savedConversations = [];
+    }
+
+    if (savedConversations.length === 0) {
+        listContainer.innerHTML = '<p class="empty-state" style="text-align: center; margin-top: 10px;">Kayıtlı sohbet bulunamadı.</p>';
+        return;
+    }
+
+    savedConversations.forEach(chat => {
+        const item = document.createElement('div');
+        item.className = `chat-history-item${chat.id === currentChatId ? ' active' : ''}`;
+        
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'chat-history-title';
+        titleSpan.textContent = chat.title;
+        titleSpan.title = chat.title;
+        
+        // Load chat on click
+        titleSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            loadChat(chat.id);
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'chat-history-delete-btn';
+        deleteBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+        
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteChat(chat.id);
+        });
+
+        item.appendChild(titleSpan);
+        item.appendChild(deleteBtn);
+        listContainer.appendChild(item);
+    });
+}
+
+function loadChat(chatId) {
+    let savedConversations = [];
+    try {
+        const raw = localStorage.getItem('unity_studio_saved_chats');
+        if (raw) savedConversations = JSON.parse(raw);
+    } catch (e) {
+        return;
+    }
+
+    const chat = savedConversations.find(c => c.id === chatId);
+    if (!chat) return;
+
+    currentChatId = chatId;
+    messageHistory = chat.history;
+    currentMode = chat.mode || 'plan';
+
+    // Update Mode button UI
+    if (currentMode === 'plan') {
+        planModeBtn.classList.add('active');
+        buildModeBtn.classList.remove('active');
+        modeStatusText.textContent = 'PLAN MODU AKTİF';
+    } else {
+        buildModeBtn.classList.add('active');
+        planModeBtn.classList.remove('active');
+        modeStatusText.textContent = 'BUILD MODU AKTİF';
+    }
+
+    // Clear feed and re-render messages
+    chatFeed.innerHTML = '';
+    
+    // We recreate message rows one by one
+    messageHistory.forEach(msg => {
+        if (msg.role === 'user') {
+            appendMessage('user', msg.content);
+        } else if (msg.role === 'assistant') {
+            appendMessage('assistant', msg.content);
+        }
+    });
+
+    renderSavedChatsList();
+    settingsDrawer.classList.remove('open');
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+}
+
+function deleteChat(chatId) {
+    let savedConversations = [];
+    try {
+        const raw = localStorage.getItem('unity_studio_saved_chats');
+        if (raw) savedConversations = JSON.parse(raw);
+    } catch (e) {
+        return;
+    }
+
+    savedConversations = savedConversations.filter(c => c.id !== chatId);
+    localStorage.setItem('unity_studio_saved_chats', JSON.stringify(savedConversations));
+
+    // If deleted chat was the active one, start a new chat
+    if (currentChatId === chatId) {
+        startNewChat();
+    } else {
+        renderSavedChatsList();
+    }
+}
+
+function startNewChat() {
+    currentChatId = null;
+    messageHistory = [];
+    chatFeed.innerHTML = `
+        <div class="welcome-box">
+            <h2>Hoş Geldiniz 🔮</h2>
+            <p>Unity AI Givelopment Studio aktif. Plan veya Derleme moduna geçip Unity projenizi yönetmeye başlayabilirsiniz.</p>
+        </div>
+    `;
+    renderSavedChatsList();
+    settingsDrawer.classList.remove('open');
+}
+
+// Bind New Chat button
+const newChatBtn = document.getElementById('newChatBtn');
+if (newChatBtn) {
+    newChatBtn.addEventListener('click', startNewChat);
+}
+
+// Initial render of conversations list
+renderSavedChatsList();
+

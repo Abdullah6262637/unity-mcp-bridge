@@ -91,17 +91,41 @@ namespace UnityMCPBridge
 
             try
             {
-                string[] searchFolders = new string[] { folder };
-                string[] guids = AssetDatabase.FindAssets(filter, searchFolders);
                 var assets = new List<string>();
-
-                foreach (var guid in guids)
+                if (string.IsNullOrEmpty(filter))
                 {
-                    string path = AssetDatabase.GUIDToAssetPath(guid);
-                    // Avoid listing directory assets themselves
-                    if (!string.IsNullOrEmpty(path) && !assets.Contains(path) && !Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), path)))
+                    // Scan folders recursively when filter query is empty
+                    string currentDir = Directory.GetCurrentDirectory();
+                    string fullFolderPath = Path.GetFullPath(Path.Combine(currentDir, folder));
+                    if (Directory.Exists(fullFolderPath))
                     {
-                        assets.Add(path);
+                        string[] files = Directory.GetFiles(fullFolderPath, "*.*", SearchOption.AllDirectories);
+                        foreach (string file in files)
+                        {
+                            string relativePath = file.Substring(currentDir.Length + 1).Replace('\\', '/');
+                            
+                            // Exclude meta files and hidden paths
+                            if (!relativePath.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && 
+                                !relativePath.Contains("/.") && 
+                                !relativePath.Contains("\\."))
+                            {
+                                assets.Add(relativePath);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Fall back to Unity's FindAssets database search index
+                    string[] searchFolders = new string[] { folder };
+                    string[] guids = AssetDatabase.FindAssets(filter, searchFolders);
+                    foreach (var guid in guids)
+                    {
+                        string path = AssetDatabase.GUIDToAssetPath(guid);
+                        if (!string.IsNullOrEmpty(path) && !assets.Contains(path) && !Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), path)))
+                        {
+                            assets.Add(path);
+                        }
                     }
                 }
 
