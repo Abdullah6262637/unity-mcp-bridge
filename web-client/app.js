@@ -732,7 +732,12 @@ async function executeUnityTool(name, args) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(args)
         });
-        return await response.json();
+        const result = await response.json();
+        // If wrapped in a C# dispatcher response envelope, unwrap the inner tool data
+        if (result && result.hasOwnProperty('data') && result.data !== null) {
+            return result.data;
+        }
+        return result;
     } catch (err) {
         return { success: false, error: `Unity bağlantı hatası: ${err.message}` };
     }
