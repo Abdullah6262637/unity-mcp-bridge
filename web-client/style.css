@@ -46,7 +46,7 @@
     height: 22px;
     object-fit: contain;
     margin-right: 8px;
-    border-radius: 4px;
+    border-radius: 10px;
     background: transparent;
 }
 
@@ -175,7 +175,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
     background: #27272a;
-    border-radius: 3px;
+    border-radius: 8px;
     transition: background 0.2s;
 }
 
@@ -249,7 +249,7 @@ body {
     gap: 6px;
     background: #18181b;
     padding: 3px 8px;
-    border-radius: 4px;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
     margin-left: 8px;
 }
@@ -292,7 +292,7 @@ body {
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    border-radius: 4px;
+    border-radius: 10px;
     cursor: pointer;
     font-family: inherit;
     transition: all 0.15s ease;
@@ -363,7 +363,7 @@ body {
 .bubble {
     max-width: 85%;
     padding: 12px 14px;
-    border-radius: 6px;
+    border-radius: 12px;
     line-height: 1.5;
     font-size: 17px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -393,14 +393,14 @@ body {
     font-size: 14px;
     background: var(--bg-canvas);
     padding: 2px 4px;
-    border-radius: 3px;
+    border-radius: 8px;
     border: 1px solid var(--border-color);
 }
 
 .bubble pre {
     background: var(--bg-canvas);
     padding: 8px;
-    border-radius: 4px;
+    border-radius: 10px;
     overflow-x: auto;
     margin: 8px 0;
     border: 1px solid var(--border-color);
@@ -432,7 +432,7 @@ body {
 .mode-toggle-container {
     background: #18181b;
     padding: 2px;
-    border-radius: 6px;
+    border-radius: 12px;
     display: flex;
     border: 1px solid var(--border-color);
 }
@@ -446,7 +446,7 @@ body {
     font-weight: 700;
     letter-spacing: 0.5px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 10px;
     font-family: inherit;
     transition: all 0.15s ease;
 }
@@ -472,7 +472,7 @@ body {
     flex: 1;
     background: var(--bg-canvas);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 12px;
     padding: 8px 10px;
     color: var(--text-primary);
     font-family: inherit;
@@ -491,7 +491,7 @@ body {
 .send-btn {
     width: 36px;
     height: 36px;
-    border-radius: 6px;
+    border-radius: 12px;
     border: 1px solid #ffffff;
     background: #ffffff;
     color: #000000;
@@ -572,7 +572,7 @@ body {
     display: flex;
     align-items: center;
     padding: 4px 6px;
-    border-radius: 4px;
+    border-radius: 10px;
     cursor: pointer;
     transition: background-color 0.1s;
 }
@@ -621,7 +621,7 @@ body {
 
 .log-row {
     padding: 4px 6px;
-    border-radius: 4px;
+    border-radius: 10px;
     border-bottom: 1px solid #141416;
     display: flex;
     flex-direction: column;
@@ -642,7 +642,7 @@ body {
 .log-type {
     font-weight: 700;
     padding: 0 4px;
-    border-radius: 3px;
+    border-radius: 8px;
     font-size: 12px;
 }
 
@@ -672,7 +672,7 @@ body {
     white-space: pre-wrap;
     padding: 4px;
     background: #08080a;
-    border-radius: 3px;
+    border-radius: 8px;
     margin-top: 4px;
 }
 
@@ -691,7 +691,7 @@ body {
     max-width: 100%;
     max-height: 100%;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     background: #18181b;
 }
@@ -711,7 +711,7 @@ body {
     margin-top: 8px;
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 10px;
     overflow: hidden;
 }
 
@@ -753,7 +753,7 @@ body {
     margin-top: 12px;
     background: #18181b;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 10px;
     padding: 14px;
     display: flex;
     flex-direction: column;
@@ -779,7 +779,7 @@ body {
     background: #ffffff;
     color: #000000;
     padding: 6px 16px;
-    border-radius: 4px;
+    border-radius: 10px;
     font-weight: 700;
     font-size: 14px;
     letter-spacing: 0.5px;
@@ -840,4 +840,51 @@ body {
 
 .drawer-close-btn:hover {
     color: var(--text-primary);
+}
+
+
+/* --- Settings Drawer Inner Styles --- */
+.settings-box {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.input-group label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.settings-box input, .settings-box select {
+    background: var(--bg-canvas);
+    border: 1px solid var(--border-color);
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.settings-box input:focus, .settings-box select:focus {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+/* Modern Bubble Corner Adjustments */
+.message-row.user .bubble {
+    border-bottom-right-radius: 4px !important;
+}
+.message-row.assistant .bubble {
+    border-bottom-left-radius: 4px !important;
 }
