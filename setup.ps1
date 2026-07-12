@@ -60,9 +60,19 @@ if (Test-Path $claudeConfigPath) {
 }
 
 # Add or update the unity-bridge server entry
-$unityBridgeConfig = @{
-    "command" = "node"
-    "args" = @($serverPath)
+$csServerPath = (Join-Path $PSScriptRoot "mcp-server-cs/mcp-server.exe").Replace('\', '/')
+if (Test-Path $csServerPath) {
+    Write-Host "Found compiled C# server at $csServerPath. Configuring Claude Desktop to use native C# server..." -ForegroundColor Green
+    $unityBridgeConfig = @{
+        "command" = $csServerPath
+        "args" = @()
+    }
+} else {
+    Write-Host "Compiled C# server not found. Defaulting to Node.js/TypeScript configuration..." -ForegroundColor Gray
+    $unityBridgeConfig = @{
+        "command" = "node"
+        "args" = @($serverPath)
+    }
 }
 
 # Check if mcpServers is a PSCustomObject and update it
