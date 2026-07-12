@@ -85,9 +85,29 @@
                 <button id="sendBtn" class="send-btn" aria-label="Gönder">🚀</button>
             </div>
         </main>
+
+        <!-- Inspector Pane -->
+        <section class="inspector-pane">
+            <iframe id="inspectorIFrame" src="about:blank"></iframe>
+        </section>
     </div>
 
     <!-- Core App Logic -->
+    <script>
+        // Init MCP Inspector IFrame URL from Electron
+        window.initMCPUrl = function(url) {
+            const iframe = document.getElementById('inspectorIFrame');
+            if (iframe) {
+                iframe.src = url;
+            }
+        };
+        // If it loaded before Electron called initMCPUrl, check cached value
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.mcpUrlCached) {
+                window.initMCPUrl(window.mcpUrlCached);
+            }
+        });
+    </script>
     <script src="app.js"></script>
 </body>
 </html>
