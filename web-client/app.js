@@ -1,30 +1,364 @@
-// Unity MCP Bridge Web Client
+// Unity MCP Bridge Web Client (Integrated Workspace Edition)
 
-// Default connection settings
+// Connection Settings
 const UNITY_URL = 'http://127.0.0.1:8090';
 
-// Mode States
+// Mode & Tab States
 let currentMode = 'plan'; // 'plan' or 'build'
 let isChatActive = false;
 let messageHistory = [];
+let currentTab = 'inspector'; // 'inspector' or 'chat'
 
-// DOM Elements
-const planModeBtn = document.getElementById('planModeBtn');
-const buildModeBtn = document.getElementById('buildModeBtn');
-const clearChatBtn = document.getElementById('clearChatBtn');
-const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
-const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+// Parent DOM Elements
 const settingsDrawer = document.getElementById('settingsDrawer');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 const endpointInput = document.getElementById('endpointInput');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const modelSelect = document.getElementById('modelSelect');
-const statusDot = document.getElementById('statusDot');
-const statusText = document.getElementById('statusText');
-const chatFeed = document.getElementById('chatFeed');
-const chatInput = document.getElementById('chatInput');
-const sendBtn = document.getElementById('sendBtn');
 
-// List of all Unity MCP Tools (Highly optimized to minimize token context size)
+// References to elements injected inside the IFrame
+let docSendBtn, docChatInput, docChatFeed, docPlanModeBtn, docBuildModeBtn, docClearChatBtn, docToggleSettingsBtn, docStatusDot, docStatusText;
+
+// Parent close settings listener
+closeSettingsBtn.addEventListener('click', () => {
+    settingsDrawer.classList.remove('open');
+});
+
+// Dynamic Class Copier for Tabs
+function getTabClasses(headerContainer) {
+    const buttons = Array.from(headerContainer.querySelectorAll('button')).filter(b => b.id !== 'customChatTabBtn');
+    if (buttons.length === 0) return { activeClass: '', inactiveClass: '' };
+
+    const classGroups = {};
+    buttons.forEach(btn => {
+        const cls = btn.className;
+        classGroups[cls] = classGroups[cls] || [];
+        classGroups[cls].push(btn);
+    });
+
+    let activeClass = '';
+    let inactiveClass = '';
+
+    const keys = Object.keys(classGroups);
+    if (keys.length === 2) {
+        if (classGroups[keys[0]].length === 1) {
+            activeClass = keys[0];
+            inactiveClass = keys[1];
+        } else if (classGroups[keys[1]].length === 1) {
+            activeClass = keys[1];
+            inactiveClass = keys[0];
+        }
+    } else if (keys.length === 1) {
+        inactiveClass = keys[0];
+    } else {
+        // Statistical fallback: find the most common as inactive, and the unique one as active
+        let maxCount = 0;
+        let mostCommonKey = keys[0];
+        keys.forEach(k => {
+            if (classGroups[k].length > maxCount) {
+                maxCount = classGroups[k].length;
+                mostCommonKey = k;
+            }
+        });
+        inactiveClass = mostCommonKey;
+        activeClass = keys.find(k => k !== mostCommonKey) || mostCommonKey;
+    }
+
+    return { activeClass, inactiveClass };
+}
+
+// Injected CSS Styles inside the IFrame
+const INJECTED_CSS = `
+    .custom-chat-pane {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+        background: #ffffff;
+        font-family: inherit;
+    }
+    
+    .chat-header {
+        height: 50px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        flex-shrink: 0;
+        background: #ffffff;
+    }
+    
+    .chat-header h2 {
+        font-size: 13px;
+        font-weight: 600;
+        color: #0f172a;
+    }
+    
+    .chat-feed {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: #f8fafc;
+    }
+    
+    .message-row {
+        display: flex;
+        width: 100%;
+    }
+    
+    .message-row.user {
+        justify-content: flex-end;
+    }
+    
+    .message-row.assistant {
+        justify-content: flex-start;
+    }
+    
+    .bubble {
+        max-width: 80%;
+        padding: 10px 14px;
+        border-radius: 8px;
+        line-height: 1.5;
+        font-size: 13px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    }
+    
+    .message-row.user .bubble {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+        border-bottom-right-radius: 2px;
+    }
+    
+    .message-row.assistant .bubble {
+        background: #ffffff;
+        color: #0f172a;
+        border: 1px solid #e2e8f0;
+        border-bottom-left-radius: 2px;
+    }
+    
+    .bubble p {
+        margin-bottom: 4px;
+    }
+    .bubble p:last-child {
+        margin-bottom: 0;
+    }
+    
+    .bubble code {
+        font-family: monospace;
+        font-size: 11px;
+        background: #f1f5f9;
+        padding: 2px 4px;
+        border-radius: 3px;
+        color: #0f172a;
+    }
+    
+    .bubble pre {
+        background: #f8fafc;
+        padding: 8px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 6px 0;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .bubble pre code {
+        background: transparent;
+        padding: 0;
+        font-size: 11px;
+    }
+    
+    .input-area {
+        padding: 12px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 8px;
+        background: #ffffff;
+        flex-shrink: 0;
+    }
+    
+    .chat-input {
+        flex: 1;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 8px 10px;
+        color: #0f172a;
+        font-family: inherit;
+        font-size: 13px;
+        outline: none;
+        resize: none;
+        height: 36px;
+        max-height: 80px;
+        transition: border-color 0.15s;
+    }
+    
+    .chat-input:focus {
+        border-color: #2563eb;
+    }
+    
+    .send-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        border: none;
+        background: #2563eb;
+        color: #ffffff;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+    }
+    
+    .send-btn:hover {
+        background: #1d4ed8;
+    }
+    
+    .send-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .chat-action-btn {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 6px;
+    }
+    
+    .chat-action-btn:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
+    
+    .mode-toggle-container {
+        background: #f1f5f9;
+        padding: 2px;
+        border-radius: 12px;
+        display: flex;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .mode-btn {
+        border: none;
+        background: transparent;
+        color: #475569;
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 10px;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .mode-btn.active {
+        color: #ffffff;
+    }
+    
+    .mode-btn.plan.active {
+        background: #7c3aed;
+    }
+    
+    .mode-btn.build.active {
+        background: #2563eb;
+    }
+    
+    .tool-execution-box {
+        width: 100%;
+        margin-top: 6px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .tool-header {
+        background: #f8fafc;
+        padding: 4px 8px;
+        font-size: 10px;
+        font-weight: 600;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #e2e8f0;
+        color: #475569;
+    }
+    
+    .tool-header .tool-status {
+        color: #059669;
+    }
+    
+    .tool-header .tool-status.running {
+        color: #2563eb;
+    }
+    
+    .tool-body {
+        padding: 8px;
+        font-family: monospace;
+        font-size: 10px;
+        max-height: 100px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        background: #fafafa;
+        color: #334155;
+    }
+    
+    .plan-confirmation-box {
+        margin-top: 8px;
+        background: #faf5ff;
+        border: 1px solid #e9d5ff;
+        border-radius: 6px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .plan-confirmation-box h4 {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b21a8;
+    }
+    
+    .plan-confirmation-box p {
+        font-size: 10px;
+        color: #475569;
+    }
+    
+    .plan-confirm-btn {
+        border: none;
+        background: #059669;
+        color: #ffffff;
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 11px;
+        cursor: pointer;
+    }
+`;
+
+// OpenLLM-compatible Tools List (Compacted to save token space)
 const TOOLS = [
     {
         type: 'function',
@@ -374,71 +708,200 @@ Execute the approved plan using the available Unity tools.
 You have access to tools to modify the scene, write scripts, build prefabs, run tests, and capture screenshots.
 Always call the tools to execute changes, and verify success.`;
 
-// Connection polling
+// Polling Unity HTTP connection status
 async function checkUnityConnection() {
     try {
         const res = await fetch(`${UNITY_URL}/health`, { method: 'GET' });
         if (res.ok) {
             const data = await res.json();
-            statusDot.classList.add('online');
-            statusText.textContent = `Unity: Çevrimiçi (v${data.unityVersion})`;
+            if (docStatusDot) docStatusDot.style.backgroundColor = '#059669'; // Emerald Green
+            if (docStatusText) docStatusText.textContent = `Unity: Çevrimiçi (v${data.unityVersion})`;
         } else {
             throw new Error();
         }
     } catch {
-        statusDot.classList.remove('online');
-        statusText.textContent = 'Unity: Çevrimdışı (Unity Editor Açık Değil)';
+        if (docStatusDot) docStatusDot.style.backgroundColor = '#dc2626'; // Red
+        if (docStatusText) docStatusText.textContent = 'Unity: Çevrimdışı';
     }
 }
 setInterval(checkUnityConnection, 3000);
-checkUnityConnection();
 
-// Mode switches
-planModeBtn.addEventListener('click', () => {
-    if (isChatActive) return;
-    currentMode = 'plan';
-    planModeBtn.classList.add('active');
-    buildModeBtn.classList.remove('active');
-});
+// Core integration mechanism
+const iframe = document.getElementById('inspectorIFrame');
 
-buildModeBtn.addEventListener('click', () => {
-    if (isChatActive) return;
-    currentMode = 'build';
-    buildModeBtn.classList.add('active');
-    planModeBtn.classList.remove('active');
-});
+function startIntegrationLoop() {
+    let interval = setInterval(() => {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc) return;
 
-// Settings Drawer Actions
-toggleSettingsBtn.addEventListener('click', () => {
-    settingsDrawer.classList.toggle('open');
-});
+        const buttons = Array.from(doc.querySelectorAll('button'));
+        // Find the Tools button inside the inspector's header row
+        const toolsBtn = buttons.find(b => b.textContent.trim() === 'Tools');
+        
+        if (toolsBtn) {
+            clearInterval(interval);
+            setupIntegratedChat(doc, toolsBtn);
+        }
+    }, 150);
+}
 
-closeSettingsBtn.addEventListener('click', () => {
-    settingsDrawer.classList.remove('open');
-});
+function setupIntegratedChat(doc, toolsBtn) {
+    console.log("[Integration] Target 'Tools' tab found. Injecting 'Chat' tab...");
 
-// Clear Chat Action
-clearChatBtn.addEventListener('click', () => {
-    if (isChatActive) return;
-    messageHistory = [];
-    chatFeed.innerHTML = `
-        <div class="message-row assistant">
-            <div class="bubble">
-                <p>Sohbet geçmişi temizlendi! 🧹 Yeni bir çalışma başlatabilirsiniz.</p>
-                <p>Şu anda **${currentMode === 'plan' ? 'Plan' : 'Build'} Modu**'ndayım.</p>
+    // 1. Inject Stylesheets into the IFrame
+    const styleTag = doc.createElement('style');
+    styleTag.innerHTML = INJECTED_CSS;
+    doc.head.appendChild(styleTag);
+
+    const headerContainer = toolsBtn.parentElement;
+    const contentContainer = headerContainer.nextElementSibling;
+    const mainRightPane = headerContainer.parentElement;
+
+    // 2. Create the custom Chat Tab Button
+    const chatTabBtn = doc.createElement('button');
+    chatTabBtn.id = 'customChatTabBtn';
+    chatTabBtn.className = toolsBtn.className; // Inherit styling classes
+    chatTabBtn.innerHTML = '💬 Chat';
+    
+    // Insert it next to the Tools tab
+    toolsBtn.parentNode.insertBefore(chatTabBtn, toolsBtn.nextSibling);
+
+    // 3. Clone and Inject the Chat Pane Template
+    const template = document.getElementById('chatPaneTemplate');
+    const chatPaneClone = doc.importNode(template.content, true);
+    mainRightPane.appendChild(chatPaneClone);
+
+    const chatPane = doc.getElementById('customChatPane');
+
+    // 4. Resolve Injected DOM Elements
+    docSendBtn = doc.getElementById('sendBtn');
+    docChatInput = doc.getElementById('chatInput');
+    docChatFeed = doc.getElementById('chatFeed');
+    docPlanModeBtn = doc.getElementById('planModeBtn');
+    docBuildModeBtn = doc.getElementById('buildModeBtn');
+    docClearChatBtn = doc.getElementById('clearChatBtn');
+    docToggleSettingsBtn = doc.getElementById('toggleSettingsBtn');
+    docStatusDot = doc.getElementById('statusDot');
+    docStatusText = doc.getElementById('statusText');
+
+    // Run connection health check immediately
+    checkUnityConnection();
+
+    // 5. Setup Action Handlers inside the IFrame
+    docSendBtn.addEventListener('click', handleSendMessage);
+    docChatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+        }
+    });
+
+    docChatInput.addEventListener('input', () => {
+        docChatInput.style.height = 'auto';
+        docChatInput.style.height = docChatInput.scrollHeight + 'px';
+    });
+
+    docPlanModeBtn.addEventListener('click', () => {
+        if (isChatActive) return;
+        currentMode = 'plan';
+        docPlanModeBtn.classList.add('active');
+        docBuildModeBtn.classList.remove('active');
+    });
+
+    docBuildModeBtn.addEventListener('click', () => {
+        if (isChatActive) return;
+        currentMode = 'build';
+        docBuildModeBtn.classList.add('active');
+        docPlanModeBtn.classList.remove('active');
+    });
+
+    docClearChatBtn.addEventListener('click', () => {
+        if (isChatActive) return;
+        messageHistory = [];
+        docChatFeed.innerHTML = `
+            <div class="message-row assistant">
+                <div class="bubble">
+                    <p>Sohbet geçmişi temizlendi! 🧹 Yeni bir çalışma başlatabilirsiniz.</p>
+                    <p>Şu anda **${currentMode === 'plan' ? 'Plan' : 'Build'} Modu**'ndayım.</p>
+                </div>
             </div>
-        </div>
-    `;
-});
+        `;
+    });
 
-// Auto-size input box
-chatInput.addEventListener('input', () => {
-    chatInput.style.height = 'auto';
-    chatInput.style.height = (chatInput.scrollHeight) + 'px';
-});
+    docToggleSettingsBtn.addEventListener('click', () => {
+        settingsDrawer.classList.toggle('open');
+    });
 
-// UI helpers
+    // 6. Navigation Event Delegation (Click Tab toggles)
+    headerContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        if (btn.id === 'customChatTabBtn') {
+            currentTab = 'chat';
+        } else {
+            currentTab = 'inspector';
+        }
+        syncLayoutState(doc, headerContainer, contentContainer, chatPane, chatTabBtn);
+    });
+
+    // Initial state sync
+    syncLayoutState(doc, headerContainer, contentContainer, chatPane, chatTabBtn);
+
+    // 7. MutationObserver to fight off React virtual DOM updates
+    const observer = new MutationObserver(() => {
+        // Verify custom chat button is still in DOM
+        if (!doc.getElementById('customChatTabBtn')) {
+            const currentToolsBtn = Array.from(headerContainer.querySelectorAll('button')).find(b => b.textContent.trim() === 'Tools');
+            if (currentToolsBtn) {
+                currentToolsBtn.parentNode.insertBefore(chatTabBtn, currentToolsBtn.nextSibling);
+            }
+        }
+
+        // Verify custom chat pane is still appended
+        if (!doc.getElementById('customChatPane')) {
+            mainRightPane.appendChild(chatPane);
+        }
+
+        // Keep layouts in sync
+        syncLayoutState(doc, headerContainer, contentContainer, chatPane, chatTabBtn);
+    });
+
+    observer.observe(mainRightPane, { childList: true, subtree: true });
+}
+
+function syncLayoutState(doc, headerContainer, contentContainer, chatPane, chatTabBtn) {
+    const { activeClass, inactiveClass } = getTabClasses(headerContainer);
+
+    if (currentTab === 'chat') {
+        contentContainer.style.display = 'none';
+        chatPane.style.display = 'flex';
+
+        if (activeClass) chatTabBtn.className = activeClass;
+        if (inactiveClass) {
+            Array.from(headerContainer.querySelectorAll('button')).forEach(btn => {
+                if (btn.id !== 'customChatTabBtn') {
+                    btn.className = inactiveClass;
+                }
+            });
+        }
+    } else {
+        contentContainer.style.display = '';
+        chatPane.style.display = 'none';
+
+        if (inactiveClass) chatTabBtn.className = inactiveClass;
+    }
+}
+
+// Start watching the iframe load
+iframe.addEventListener('load', startIntegrationLoop);
+if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+    startIntegrationLoop();
+}
+
+// UI messages
 function appendMessage(role, text) {
+    if (!docChatFeed) return;
     const row = document.createElement('div');
     row.className = `message-row ${role}`;
     
@@ -455,12 +918,13 @@ function appendMessage(role, text) {
         
     bubble.innerHTML = formattedText;
     row.appendChild(bubble);
-    chatFeed.appendChild(row);
-    chatFeed.scrollTop = chatFeed.scrollHeight;
+    docChatFeed.appendChild(row);
+    docChatFeed.scrollTop = docChatFeed.scrollHeight;
     return bubble;
 }
 
 function appendToolBox(name, args) {
+    if (!docChatFeed) return null;
     const box = document.createElement('div');
     box.className = 'tool-execution-box';
     
@@ -474,8 +938,8 @@ function appendToolBox(name, args) {
     body.textContent = `Argümanlar:\n${JSON.stringify(args, null, 2)}`;
     box.appendChild(body);
     
-    chatFeed.appendChild(box);
-    chatFeed.scrollTop = chatFeed.scrollHeight;
+    docChatFeed.appendChild(box);
+    docChatFeed.scrollTop = docChatFeed.scrollHeight;
     
     return {
         updateStatus: (statusText, isError = false) => {
@@ -485,32 +949,35 @@ function appendToolBox(name, args) {
         },
         appendOutput: (output) => {
             body.textContent += `\n\nYanıt:\n${JSON.stringify(output, null, 2)}`;
-            chatFeed.scrollTop = chatFeed.scrollHeight;
+            docChatFeed.scrollTop = docChatFeed.scrollHeight;
         }
     };
 }
 
 function appendPlanConfirmPanel() {
-    const box = document.createElement('div');
+    if (!docChatFeed) return;
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    const box = doc.createElement('div');
     box.className = 'plan-confirmation-box';
     box.innerHTML = `
         <h4>Plan Hazırlandı! 🔮</h4>
         <p>Planı onaylayıp Build Moduna geçerek değişiklikleri uygulamak ister misiniz?</p>
         <button class="plan-confirm-btn" id="confirmPlanBtn">Planı Onayla ve Derle</button>
     `;
-    chatFeed.appendChild(box);
-    chatFeed.scrollTop = chatFeed.scrollHeight;
+    docChatFeed.appendChild(box);
+    docChatFeed.scrollTop = docChatFeed.scrollHeight;
 
-    document.getElementById('confirmPlanBtn').addEventListener('click', () => {
+    doc.getElementById('confirmPlanBtn').addEventListener('click', () => {
         box.remove();
         currentMode = 'build';
-        buildModeBtn.classList.add('active');
-        planModeBtn.classList.remove('active');
+        docBuildModeBtn.classList.add('active');
+        docPlanModeBtn.classList.remove('active');
         appendMessage('assistant', 'Plan onaylandı! 🛠️ Build Moduna geçildi. Değişiklikleri uygulamaya başlıyorum.');
         runBuildProcess();
     });
 }
 
+// Bridge execution to local node server
 async function executeUnityTool(name, args) {
     try {
         const response = await fetch(`${UNITY_URL}/tools/${name}`, {
@@ -524,6 +991,7 @@ async function executeUnityTool(name, args) {
     }
 }
 
+// Request LLM endpoint
 async function callLLM(apiMessages, useTools = false) {
     const endpoint = endpointInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
@@ -557,26 +1025,19 @@ async function callLLM(apiMessages, useTools = false) {
     return await res.json();
 }
 
-sendBtn.addEventListener('click', handleSendMessage);
-chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSendMessage();
-    }
-});
-
 async function handleSendMessage() {
-    const text = chatInput.value.trim();
+    if (!docChatInput) return;
+    const text = docChatInput.value.trim();
     if (!text || isChatActive) return;
 
-    chatInput.value = '';
-    chatInput.style.height = 'auto';
+    docChatInput.value = '';
+    docChatInput.style.height = 'auto';
     
     appendMessage('user', text);
     messageHistory.push({ role: 'user', content: text });
 
     isChatActive = true;
-    sendBtn.disabled = true;
+    docSendBtn.disabled = true;
 
     try {
         if (currentMode === 'plan') {
@@ -588,7 +1049,7 @@ async function handleSendMessage() {
         appendMessage('assistant', `⚠️ Hata oluştu: ${error.message}`);
     } finally {
         isChatActive = false;
-        sendBtn.disabled = false;
+        docSendBtn.disabled = false;
     }
 }
 
@@ -601,8 +1062,8 @@ async function runPlanProcess() {
     appendMessage('assistant', 'Plan hazırlanıyor...');
     const result = await callLLM(apiMessages, false);
     
-    if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Plan hazırlanıyor...')) {
-        chatFeed.lastElementChild.remove();
+    if (docChatFeed.lastElementChild && docChatFeed.lastElementChild.textContent.includes('Plan hazırlanıyor...')) {
+        docChatFeed.lastElementChild.remove();
     }
 
     const text = result.choices[0].message.content;
@@ -631,11 +1092,11 @@ async function runBuildProcess() {
         const choice = result.choices[0];
         const msg = choice.message;
 
-        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('İşlem yapılıyor...')) {
-            chatFeed.lastElementChild.remove();
+        if (docChatFeed.lastElementChild && docChatFeed.lastElementChild.textContent.includes('İşlem yapılıyor...')) {
+            docChatFeed.lastElementChild.remove();
         }
-        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Sonuçlar analiz ediliyor...')) {
-            chatFeed.lastElementChild.remove();
+        if (docChatFeed.lastElementChild && docChatFeed.lastElementChild.textContent.includes('Sonuçlar analiz ediliyor...')) {
+            docChatFeed.lastElementChild.remove();
         }
 
         if (msg.content) {
@@ -654,8 +1115,10 @@ async function runBuildProcess() {
                 const uiBox = appendToolBox(name, args);
                 const output = await executeUnityTool(name, args);
                 
-                uiBox.updateStatus(output.success !== false ? 'Tamamlandı' : 'Hata Oluştu', output.success === false);
-                uiBox.appendOutput(output);
+                if (uiBox) {
+                    uiBox.updateStatus(output.success !== false ? 'Tamamlandı' : 'Hata Oluştu', output.success === false);
+                    uiBox.appendOutput(output);
+                }
 
                 toolResponses.push({
                     role: 'tool',

@@ -7,37 +7,8 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Top Header Bar -->
-    <header class="app-header">
-        <div class="header-left">
-            <span class="logo-icon">🎮</span>
-            <span class="logo-text">Unity AI Studio</span>
-            <div class="status-indicator">
-                <div id="statusDot" class="status-dot"></div>
-                <span id="statusText" class="status-text">Bağlanıyor...</span>
-            </div>
-        </div>
-
-        <div class="header-center">
-            <!-- Mode Toggle Switch -->
-            <div class="mode-toggle-container">
-                <button id="planModeBtn" class="mode-btn plan active">🔮 Plan Modu</button>
-                <button id="buildModeBtn" class="mode-btn build">🛠️ Build Modu</button>
-            </div>
-        </div>
-
-        <div class="header-right">
-            <button id="clearChatBtn" class="header-action-btn" title="Sohbeti Temizle">
-                🗑️ Temizle
-            </button>
-            <button id="toggleSettingsBtn" class="header-action-btn" title="API Ayarları">
-                ⚙️ Ayarlar
-            </button>
-        </div>
-    </header>
-
     <div class="app-workspace">
-        <!-- Slide-out Settings Drawer -->
+        <!-- Slide-out Settings Drawer (overlays the entire app) -->
         <aside id="settingsDrawer" class="settings-drawer">
             <div class="drawer-header">
                 <h3>API Ayarları</h3>
@@ -62,9 +33,35 @@
             </div>
         </aside>
 
-        <!-- Left Pane: Chat Assistant -->
-        <section class="chat-pane">
-            <!-- Chat Feed -->
+        <!-- Main Inspector Frame (occupies 100% of viewport) -->
+        <section class="inspector-pane">
+            <iframe id="inspectorIFrame" src="about:blank"></iframe>
+        </section>
+    </div>
+
+    <!-- Hidden Template for our Chat Pane (injected into the iframe dynamically) -->
+    <template id="chatPaneTemplate">
+        <div id="customChatPane" class="custom-chat-pane">
+            <header class="chat-header">
+                <div class="chat-header-left" style="display: flex; align-items: center; gap: 8px;">
+                    <h2>AI Assistant</h2>
+                    <div class="status-indicator" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; padding: 2px 8px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                        <div id="statusDot" class="status-dot" style="width: 6px; height: 6px; background-color: #dc2626; border-radius: 50%;"></div>
+                        <span id="statusText" class="status-text" style="font-size: 9px; font-weight: 600; color: #475569;">Bağlanıyor...</span>
+                    </div>
+                </div>
+                <div class="chat-header-center">
+                    <div class="mode-toggle-container">
+                        <button id="planModeBtn" class="mode-btn plan active">🔮 Plan Modu</button>
+                        <button id="buildModeBtn" class="mode-btn build">🛠️ Build Modu</button>
+                    </div>
+                </div>
+                <div class="chat-header-right">
+                    <button id="clearChatBtn" class="chat-action-btn" title="Sohbeti Temizle">🗑️ Temizle</button>
+                    <button id="toggleSettingsBtn" class="chat-action-btn" title="API Ayarları">⚙️ Ayarlar</button>
+                </div>
+            </header>
+
             <div id="chatFeed" class="chat-feed">
                 <div class="message-row assistant">
                     <div class="bubble">
@@ -74,18 +71,12 @@
                 </div>
             </div>
 
-            <!-- Input area -->
             <div class="input-area">
                 <textarea id="chatInput" class="chat-input" placeholder="Unity'de ne yapmak istersin? (örn: Sahneye kırmızı bir küp ekle)" rows="1"></textarea>
                 <button id="sendBtn" class="send-btn" aria-label="Gönder">🚀</button>
             </div>
-        </section>
-
-        <!-- Right Pane: Inspector IFrame -->
-        <section class="inspector-pane">
-            <iframe id="inspectorIFrame" src="about:blank"></iframe>
-        </section>
-    </div>
+        </div>
+    </template>
 
     <!-- Core App Logic -->
     <script>
