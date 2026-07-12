@@ -1095,6 +1095,8 @@ async function runPlanProcess() {
     let continueLoop = true;
     let loopCount = 0;
     const maxLoops = 6; // Limit loops for planning to avoid infinite tool calls
+    let hasExecutedTools = false;
+    let hasSentTextMessageAfterTools = false;
 
     while (continueLoop && loopCount < maxLoops) {
         loopCount++;
@@ -1113,9 +1115,13 @@ async function runPlanProcess() {
             clearStatusMessage();
             appendMessage('assistant', msg.content);
             messageHistory.push({ role: 'assistant', content: msg.content });
+            if (hasExecutedTools) {
+                hasSentTextMessageAfterTools = true;
+            }
         }
 
         if (msg.tool_calls && msg.tool_calls.length > 0) {
+            hasExecutedTools = true;
             messageHistory.push(msg);
 
             const toolResponses = [];
@@ -1156,6 +1162,13 @@ async function runPlanProcess() {
     }
 
     clearStatusMessage();
+    
+    if (hasExecutedTools && !hasSentTextMessageAfterTools) {
+        const fallbackMsg = "📋 İnceleme tamamlandı. Lütfen yukarıdaki araç çıktılarından plan detaylarını kontrol edin.";
+        appendMessage('assistant', fallbackMsg);
+        messageHistory.push({ role: 'assistant', content: fallbackMsg });
+    }
+    
     appendPlanConfirmPanel();
 }
 
@@ -1163,6 +1176,8 @@ async function runBuildProcess() {
     let continueLoop = true;
     let loopCount = 0;
     const maxLoops = 10;
+    let hasExecutedTools = false;
+    let hasSentTextMessageAfterTools = false;
 
     while (continueLoop && loopCount < maxLoops) {
         loopCount++;
@@ -1181,9 +1196,13 @@ async function runBuildProcess() {
             clearStatusMessage();
             appendMessage('assistant', msg.content);
             messageHistory.push({ role: 'assistant', content: msg.content });
+            if (hasExecutedTools) {
+                hasSentTextMessageAfterTools = true;
+            }
         }
 
         if (msg.tool_calls && msg.tool_calls.length > 0) {
+            hasExecutedTools = true;
             messageHistory.push(msg);
 
             const toolResponses = [];
@@ -1221,4 +1240,10 @@ async function runBuildProcess() {
     }
     
     clearStatusMessage();
+    
+    if (hasExecutedTools && !hasSentTextMessageAfterTools) {
+        const fallbackMsg = "🛠️ Tüm araç çağrıları başarıyla tamamlandı ve sahne güncellendi.";
+        appendMessage('assistant', fallbackMsg);
+        messageHistory.push({ role: 'assistant', content: fallbackMsg });
+    }
 }
