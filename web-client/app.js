@@ -1,4 +1,4 @@
-// Unity MCP Bridge Web Client (Integrated Workspace Edition)
+// Unity MCP Bridge Web Client (Direct Unity Studio Edition)
 
 // Connection Settings
 const UNITY_URL = 'http://127.0.0.1:8090';
@@ -7,433 +7,271 @@ const UNITY_URL = 'http://127.0.0.1:8090';
 let currentMode = 'plan'; // 'plan' or 'build'
 let isChatActive = false;
 let messageHistory = [];
-let currentTab = 'inspector'; // 'inspector' or 'chat'
+let activeDashboardTab = 'hierarchy'; // 'hierarchy', 'console', 'camera'
 
-// Parent DOM Elements
-const settingsDrawer = document.getElementById('settingsDrawer');
+// DOM Elements - Chat & Shell
+const planModeBtn = document.getElementById('planModeBtn');
+const buildModeBtn = document.getElementById('buildModeBtn');
+const modeStatusText = document.getElementById('modeStatusText');
+const clearChatBtn = document.getElementById('clearChatBtn');
+const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const settingsDrawer = document.getElementById('settingsDrawer');
 const endpointInput = document.getElementById('endpointInput');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const modelSelect = document.getElementById('modelSelect');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const chatFeed = document.getElementById('chatFeed');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
 
-// References to elements injected inside the IFrame
-let docSendBtn, docChatInput, docChatFeed, docPlanModeBtn, docBuildModeBtn, docClearChatBtn, docToggleSettingsBtn, docStatusDot, docStatusText;
+// DOM Elements - Dashboard Tabs & Content
+const tabHierarchyBtn = document.getElementById('tabHierarchyBtn');
+const tabConsoleBtn = document.getElementById('tabConsoleBtn');
+const tabCameraBtn = document.getElementById('tabCameraBtn');
 
-// Parent close settings listener
+const hierarchyScreen = document.getElementById('hierarchyScreen');
+const consoleScreen = document.getElementById('consoleScreen');
+const cameraScreen = document.getElementById('cameraScreen');
+
+const hierarchyTree = document.getElementById('hierarchyTree');
+const consoleLogs = document.getElementById('consoleLogs');
+const screenshotContainer = document.getElementById('screenshotContainer');
+
+const refreshHierarchyBtn = document.getElementById('refreshHierarchyBtn');
+const refreshConsoleBtn = document.getElementById('refreshConsoleBtn');
+const captureSceneBtn = document.getElementById('captureSceneBtn');
+const captureGameBtn = document.getElementById('captureGameBtn');
+
+// --- Navigation Tabs Bindings ---
+const tabs = [
+    { btn: tabHierarchyBtn, screen: hierarchyScreen, name: 'hierarchy' },
+    { btn: tabConsoleBtn, screen: consoleScreen, name: 'console' },
+    { btn: tabCameraBtn, screen: cameraScreen, name: 'camera' }
+];
+
+tabs.forEach(t => {
+    t.btn.addEventListener('click', () => {
+        tabs.forEach(x => {
+            x.btn.classList.remove('active');
+            x.screen.classList.remove('active');
+        });
+        t.btn.classList.add('active');
+        t.screen.classList.add('active');
+        activeDashboardTab = t.name;
+        
+        // Immediate update on tab activate
+        if (t.name === 'hierarchy') refreshHierarchy();
+        if (t.name === 'console') refreshConsoleLogs();
+    });
+});
+
+// --- Settings Drawer Bindings ---
+toggleSettingsBtn.addEventListener('click', () => {
+    settingsDrawer.classList.toggle('open');
+});
+
 closeSettingsBtn.addEventListener('click', () => {
     settingsDrawer.classList.remove('open');
 });
 
-// Dynamic Class Copier for Tabs
-function getTabClasses(headerContainer) {
-    const buttons = Array.from(headerContainer.querySelectorAll('button')).filter(b => b.id !== 'customChatTabBtn');
-    if (buttons.length === 0) return { activeClass: '', inactiveClass: '' };
+// --- Mode Switches ---
+planModeBtn.addEventListener('click', () => {
+    if (isChatActive) return;
+    currentMode = 'plan';
+    planModeBtn.classList.add('active');
+    buildModeBtn.classList.remove('active');
+    modeStatusText.textContent = 'PLAN MODU AKTİF';
+});
 
-    const classGroups = {};
-    buttons.forEach(btn => {
-        const cls = btn.className;
-        classGroups[cls] = classGroups[cls] || [];
-        classGroups[cls].push(btn);
-    });
+buildModeBtn.addEventListener('click', () => {
+    if (isChatActive) return;
+    currentMode = 'build';
+    buildModeBtn.classList.add('active');
+    planModeBtn.classList.remove('active');
+    modeStatusText.textContent = 'BUILD MODU AKTİF';
+});
 
-    let activeClass = '';
-    let inactiveClass = '';
+// --- Clear Chat ---
+clearChatBtn.addEventListener('click', () => {
+    if (isChatActive) return;
+    messageHistory = [];
+    chatFeed.innerHTML = `
+        <div class="message-row assistant">
+            <div class="bubble">
+                <p>Sohbet geçmişi temizlendi! 🧹 Yeni bir çalışma başlatabilirsiniz.</p>
+                <p>Şu anda **${currentMode === 'plan' ? 'Plan' : 'Build'} Modu**'ndayım.</p>
+            </div>
+        </div>
+    `;
+});
 
-    const keys = Object.keys(classGroups);
-    if (keys.length === 2) {
-        if (classGroups[keys[0]].length === 1) {
-            activeClass = keys[0];
-            inactiveClass = keys[1];
-        } else if (classGroups[keys[1]].length === 1) {
-            activeClass = keys[1];
-            inactiveClass = keys[0];
-        }
-    } else if (keys.length === 1) {
-        inactiveClass = keys[0];
+// --- Auto-size Textarea ---
+chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = (chatInput.scrollHeight) + 'px';
+});
+
+// --- Refresh Hierarchy ---
+async function refreshHierarchy() {
+    hierarchyTree.innerHTML = '<p class="empty-state">Hiyerarşi güncelleniyor...</p>';
+    const data = await executeUnityTool('get_scene_hierarchy', {});
+    if (data && data.scene) {
+        renderHierarchy(data.scene);
     } else {
-        // Statistical fallback: find the most common as inactive, and the unique one as active
-        let maxCount = 0;
-        let mostCommonKey = keys[0];
-        keys.forEach(k => {
-            if (classGroups[k].length > maxCount) {
-                maxCount = classGroups[k].length;
-                mostCommonKey = k;
-            }
-        });
-        inactiveClass = mostCommonKey;
-        activeClass = keys.find(k => k !== mostCommonKey) || mostCommonKey;
+        hierarchyTree.innerHTML = '<p class="empty-state">Hiyerarşi alınamadı. Unity bağlı olmayabilir.</p>';
+    }
+}
+refreshHierarchyBtn.addEventListener('click', refreshHierarchy);
+
+function renderHierarchy(sceneData) {
+    hierarchyTree.innerHTML = '';
+    if (!sceneData || !sceneData.roots || sceneData.roots.length === 0) {
+        hierarchyTree.innerHTML = '<p class="empty-state">Sahnede hiç GameObject yok.</p>';
+        return;
     }
 
-    return { activeClass, inactiveClass };
+    const container = document.createElement('div');
+    sceneData.roots.forEach(root => {
+        container.appendChild(createNodeRow(root, 0));
+    });
+    hierarchyTree.appendChild(container);
 }
 
-// Injected CSS Styles inside the IFrame (With complete dark-mode overrides for the Inspector)
-const INJECTED_CSS = `
-    /* --- MCP Inspector Dark Theme Overrides --- */
-    body {
-        background-color: #0b0f19 !important;
-        color: #f8fafc !important;
-    }
-    
-    /* Overriding main container backgrounds */
-    .bg-white, [class*="bg-white"], .bg-slate-50, .bg-gray-50, [class*="bg-slate-50"] {
-        background-color: #111827 !important;
-    }
-    
-    .bg-slate-100, .bg-gray-100, .bg-slate-200/50 {
-        background-color: #1f2937 !important;
-    }
-    
-    /* Headers & Panel surfaces */
-    header, [class*="border-b"], .border-slate-200, .border-gray-200, [class*="border-slate-200"], [class*="border-gray-200"] {
-        border-color: #1f2937 !important;
-    }
-    
-    /* Text colors */
-    .text-slate-900, .text-gray-900, [class*="text-slate-900"] {
-        color: #f8fafc !important;
-    }
-    
-    .text-slate-500, .text-slate-600, .text-gray-500, [class*="text-slate-500"] {
-        color: #94a3b8 !important;
-    }
-    
-    .text-slate-400, .text-gray-400 {
-        color: #64748b !important;
+function createNodeRow(node, depth) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tree-node';
+
+    const row = document.createElement('div');
+    row.className = 'node-row';
+    row.style.paddingLeft = (6 + depth * 16) + 'px';
+
+    const icon = document.createElement('span');
+    icon.className = 'node-icon';
+    icon.textContent = node.children && node.children.length > 0 ? '📂' : '📄';
+
+    const name = document.createElement('span');
+    name.className = `node-name ${node.active === false ? 'inactive' : ''}`;
+    name.textContent = node.name;
+
+    const components = document.createElement('span');
+    components.className = 'node-components';
+    if (node.components && node.components.length > 0) {
+        components.textContent = `(${node.components.map(c => c.type).join(', ')})`;
     }
 
-    /* Buttons inside the inspector */
-    button {
-        color: #cbd5e1 !important;
-    }
-    
-    button:hover {
-        background-color: #1f2937 !important;
-    }
-    
-    /* Inputs inside the inspector */
-    input, select, textarea {
-        background-color: #0b0f19 !important;
-        border-color: #374151 !important;
-        color: #f8fafc !important;
-    }
-    
-    input:focus, select:focus, textarea:focus {
-        border-color: #3b82f6 !important;
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+    row.appendChild(icon);
+    row.appendChild(name);
+    row.appendChild(components);
+    wrapper.appendChild(row);
+
+    if (node.children && node.children.length > 0) {
+        node.children.forEach(child => {
+            wrapper.appendChild(createNodeRow(child, depth + 1));
+        });
     }
 
-    /* Custom light-themed scrollbars inside the iframe */
-    ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+    return wrapper;
+}
+
+// --- Refresh Console Logs ---
+async function refreshConsoleLogs() {
+    const data = await executeUnityTool('get_console_logs', { count: 30 });
+    if (data && data.logs) {
+        renderConsoleLogs(data.logs);
+    } else {
+        consoleLogs.innerHTML = '<p class="empty-state">Konsol logları alınamadı. Unity bağlı olmayabilir.</p>';
     }
-    
-    ::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: #374151 !important;
-        border-radius: 3px;
-        transition: background 0.3s;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: #4b5563 !important;
+}
+refreshConsoleBtn.addEventListener('click', refreshConsoleLogs);
+
+function renderConsoleLogs(logs) {
+    consoleLogs.innerHTML = '';
+    if (!logs || logs.length === 0) {
+        consoleLogs.innerHTML = '<p class="empty-state">Konsol logu bulunamadı.</p>';
+        return;
     }
 
-    /* --- Custom Chat Pane Styling --- */
-    .custom-chat-pane {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        width: 100%;
-        background: #111827;
-        font-family: inherit;
-    }
-    
-    .chat-header {
-        height: 50px;
-        border-bottom: 1px solid #1f2937;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 16px;
-        flex-shrink: 0;
-        background: #111827;
-    }
-    
-    .chat-header h2 {
-        font-size: 13px;
-        font-weight: 600;
-        color: #f8fafc;
-    }
-    
-    .chat-feed {
-        flex: 1;
-        overflow-y: auto;
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        background: #0b0f19;
-    }
-    
-    .message-row {
-        display: flex;
-        width: 100%;
-    }
-    
-    .message-row.user {
-        justify-content: flex-end;
-    }
-    
-    .message-row.assistant {
-        justify-content: flex-start;
-    }
-    
-    .bubble {
-        max-width: 80%;
-        padding: 10px 14px;
-        border-radius: 8px;
-        line-height: 1.5;
-        font-size: 13px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    }
-    
-    .message-row.user .bubble {
-        background: #1e3b8b;
-        color: #f0f7ff;
-        border: 1px solid #2563eb;
-        border-bottom-right-radius: 2px;
-    }
-    
-    .message-row.assistant .bubble {
-        background: #1f2937;
-        color: #f8fafc;
-        border: 1px solid #2d3748;
-        border-bottom-left-radius: 2px;
-    }
-    
-    .bubble p {
-        margin-bottom: 4px;
-    }
-    .bubble p:last-child {
-        margin-bottom: 0;
-    }
-    
-    .bubble code {
-        font-family: monospace;
-        font-size: 11px;
-        background: #0b0f19;
-        padding: 2px 4px;
-        border-radius: 3px;
-        color: #e2e8f0;
-    }
-    
-    .bubble pre {
-        background: #0b0f19;
-        padding: 8px;
-        border-radius: 6px;
-        overflow-x: auto;
-        margin: 6px 0;
-        border: 1px solid #1f2937;
-    }
-    
-    .bubble pre code {
-        background: transparent;
-        padding: 0;
-        font-size: 11px;
-    }
-    
-    .input-area {
-        padding: 12px;
-        border-top: 1px solid #1f2937;
-        display: flex;
-        gap: 8px;
-        background: #111827;
-        flex-shrink: 0;
-    }
-    
-    .chat-input {
-        flex: 1;
-        background: #0b0f19;
-        border: 1px solid #374151;
-        border-radius: 6px;
-        padding: 8px 10px;
-        color: #f8fafc;
-        font-family: inherit;
-        font-size: 13px;
-        outline: none;
-        resize: none;
-        height: 36px;
-        max-height: 80px;
-        transition: border-color 0.15s;
-    }
-    
-    .chat-input:focus {
-        border-color: #3b82f6;
-    }
-    
-    .send-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 6px;
-        border: none;
-        background: #2563eb;
-        color: #ffffff;
-        cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
-    }
-    
-    .send-btn:hover {
-        background: #1d4ed8;
-    }
-    
-    .send-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    
-    .chat-action-btn {
-        background: #1f2937;
-        border: 1px solid #374151;
-        color: #cbd5e1;
-        padding: 4px 8px;
-        font-size: 11px;
-        font-weight: 600;
-        border-radius: 4px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        margin-left: 6px;
-    }
-    
-    .chat-action-btn:hover {
-        background: #2d3748;
-        border-color: #4b5563;
-        color: #ffffff;
-    }
-    
-    .mode-toggle-container {
-        background: #1f2937;
-        padding: 2px;
-        border-radius: 12px;
-        display: flex;
-        border: 1px solid #374151;
-    }
-    
-    .mode-btn {
-        border: none;
-        background: transparent;
-        color: #94a3b8;
-        padding: 4px 12px;
-        font-size: 11px;
-        font-weight: 600;
-        cursor: pointer;
-        border-radius: 10px;
-        transition: all 0.15s ease;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-    
-    .mode-btn.active {
-        color: #ffffff;
-    }
-    
-    .mode-btn.plan.active {
-        background: #7c3aed;
-    }
-    
-    .mode-btn.build.active {
-        background: #2563eb;
-    }
-    
-    .tool-execution-box {
-        width: 100%;
-        margin-top: 6px;
-        background: #1f2937;
-        border: 1px solid #2d3748;
-        border-radius: 6px;
-        overflow: hidden;
-    }
-    
-    .tool-header {
-        background: #111827;
-        padding: 4px 8px;
-        font-size: 10px;
-        font-weight: 600;
-        font-family: monospace;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #2d3748;
-        color: #cbd5e1;
-    }
-    
-    .tool-header .tool-status {
-        color: #10b981;
-    }
-    
-    .tool-header .tool-status.running {
-        color: #3b82f6;
-    }
-    
-    .tool-body {
-        padding: 8px;
-        font-family: monospace;
-        font-size: 10px;
-        max-height: 100px;
-        overflow-y: auto;
-        white-space: pre-wrap;
-        background: #0b0f19;
-        color: #94a3b8;
-    }
-    
-    .plan-confirmation-box {
-        margin-top: 8px;
-        background: #2e1065;
-        border: 1px solid #4c1d95;
-        border-radius: 6px;
-        padding: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        align-items: center;
-        text-align: center;
-    }
-    
-    .plan-confirmation-box h4 {
-        font-size: 12px;
-        font-weight: 600;
-        color: #ddd6fe;
-    }
-    
-    .plan-confirmation-box p {
-        font-size: 10px;
-        color: #a78bfa;
-    }
-    
-    .plan-confirm-btn {
-        border: none;
-        background: #059669;
-        color: #ffffff;
-        padding: 6px 14px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 11px;
-        cursor: pointer;
-    }
-`;
+    logs.forEach(log => {
+        const row = document.createElement('div');
+        row.className = 'log-row';
 
-// OpenLLM-compatible Tools List (Compacted to save token space)
+        const meta = document.createElement('div');
+        meta.className = 'log-meta';
+
+        const type = document.createElement('span');
+        type.className = `log-type ${log.type.toLowerCase()}`;
+        type.textContent = log.type.toUpperCase();
+
+        const time = document.createElement('span');
+        time.textContent = log.timestamp || '';
+
+        meta.appendChild(type);
+        meta.appendChild(time);
+
+        const msg = document.createElement('div');
+        msg.className = 'log-message';
+        msg.textContent = log.message;
+
+        row.appendChild(meta);
+        row.appendChild(msg);
+
+        if (log.stack_trace && (log.type === 'Error' || log.type === 'Exception' || log.type === 'Assert')) {
+            const stack = document.createElement('pre');
+            stack.className = 'log-stack';
+            stack.textContent = log.stack_trace;
+            row.appendChild(stack);
+        }
+
+        consoleLogs.appendChild(row);
+    });
+    consoleLogs.scrollTop = consoleLogs.scrollHeight;
+}
+
+// --- Screenshot Capture Handlers ---
+async function captureScreenshot(viewType) {
+    screenshotContainer.innerHTML = '<p class="empty-state">Ekran görüntüsü alınıyor...</p>';
+    const toolName = viewType === 'scene' ? 'capture_scene_view' : 'capture_game_view';
+    const data = await executeUnityTool(toolName, { quality: 'medium' });
+    
+    if (data && data.image_base64) {
+        screenshotContainer.innerHTML = '';
+        const img = document.createElement('img');
+        img.className = 'screenshot-image';
+        img.src = `data:image/png;base64,${data.image_base64}`;
+        screenshotContainer.appendChild(img);
+    } else {
+        screenshotContainer.innerHTML = '<p class="empty-state">Ekran görüntüsü yakalanamadı. Unity bağlı ve PlayMode aktif veya Editör görünür olmalı.</p>';
+    }
+}
+captureSceneBtn.addEventListener('click', () => captureScreenshot('scene'));
+captureGameBtn.addEventListener('click', () => captureScreenshot('game'));
+
+// --- Connection Polling & Auto Refresh ---
+async function checkUnityConnection() {
+    try {
+        const res = await fetch(`${UNITY_URL}/health`, { method: 'GET' });
+        if (res.ok) {
+            const data = await res.json();
+            statusDot.classList.add('online');
+            statusText.textContent = `CONNECTED (v${data.unityVersion})`;
+            
+            // Auto refresh active tab dynamically
+            if (activeDashboardTab === 'hierarchy') refreshHierarchy();
+            if (activeDashboardTab === 'console') refreshConsoleLogs();
+        } else {
+            throw new Error();
+        }
+    } catch {
+        statusDot.classList.remove('online');
+        statusText.textContent = 'OFFLINE';
+    }
+}
+setInterval(checkUnityConnection, 3000);
+checkUnityConnection();
+
+// --- OpenLLM-compatible Tools List (Compacted to save token space) ---
 const TOOLS = [
     {
         type: 'function',
@@ -544,7 +382,7 @@ const TOOLS = [
                 type: 'object',
                 properties: {
                     asset_path: { type: 'string' },
-                    content: { type: 'string', description: 'Complete file code.' }
+                    content: { type: 'string', description: 'Complete code.' }
                 },
                 required: ['asset_path', 'content']
             }
@@ -783,200 +621,8 @@ Execute the approved plan using the available Unity tools.
 You have access to tools to modify the scene, write scripts, build prefabs, run tests, and capture screenshots.
 Always call the tools to execute changes, and verify success.`;
 
-// Polling Unity HTTP connection status
-async function checkUnityConnection() {
-    try {
-        const res = await fetch(`${UNITY_URL}/health`, { method: 'GET' });
-        if (res.ok) {
-            const data = await res.json();
-            if (docStatusDot) docStatusDot.style.backgroundColor = '#059669'; // Emerald Green
-            if (docStatusText) docStatusText.textContent = `Unity: Çevrimiçi (v${data.unityVersion})`;
-        } else {
-            throw new Error();
-        }
-    } catch {
-        if (docStatusDot) docStatusDot.style.backgroundColor = '#dc2626'; // Red
-        if (docStatusText) docStatusText.textContent = 'Unity: Çevrimdışı';
-    }
-}
-setInterval(checkUnityConnection, 3000);
-
-// Core integration mechanism
-const iframe = document.getElementById('inspectorIFrame');
-
-function startIntegrationLoop() {
-    let interval = setInterval(() => {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        if (!doc) return;
-
-        const buttons = Array.from(doc.querySelectorAll('button'));
-        // Find the Tools button inside the inspector's header row
-        const toolsBtn = buttons.find(b => b.textContent.trim().includes('Tools'));
-        
-        if (toolsBtn) {
-            clearInterval(interval);
-            setupIntegratedChat(doc, toolsBtn);
-        }
-    }, 150);
-}
-
-function setupIntegratedChat(doc, toolsBtn) {
-    console.log("[Integration] Target 'Tools' tab found. Injecting 'Chat' tab...");
-
-    // 1. Inject Stylesheets into the IFrame
-    const styleTag = doc.createElement('style');
-    styleTag.innerHTML = INJECTED_CSS;
-    doc.head.appendChild(styleTag);
-
-    const headerContainer = toolsBtn.parentElement;
-    const contentContainer = headerContainer.nextElementSibling;
-    const mainRightPane = headerContainer.parentElement;
-
-    // 2. Create the custom Chat Tab Button
-    const chatTabBtn = doc.createElement('button');
-    chatTabBtn.id = 'customChatTabBtn';
-    chatTabBtn.className = toolsBtn.className; // Inherit styling classes
-    chatTabBtn.innerHTML = '💬 Chat';
-    
-    // Insert it next to the Tools tab
-    toolsBtn.parentNode.insertBefore(chatTabBtn, toolsBtn.nextSibling);
-
-    // 3. Clone and Inject the Chat Pane Template
-    const template = document.getElementById('chatPaneTemplate');
-    const chatPaneClone = doc.importNode(template.content, true);
-    mainRightPane.appendChild(chatPaneClone);
-
-    const chatPane = doc.getElementById('customChatPane');
-
-    // 4. Resolve Injected DOM Elements
-    docSendBtn = doc.getElementById('sendBtn');
-    docChatInput = doc.getElementById('chatInput');
-    docChatFeed = doc.getElementById('chatFeed');
-    docPlanModeBtn = doc.getElementById('planModeBtn');
-    docBuildModeBtn = doc.getElementById('buildModeBtn');
-    docClearChatBtn = doc.getElementById('clearChatBtn');
-    docToggleSettingsBtn = doc.getElementById('toggleSettingsBtn');
-    docStatusDot = doc.getElementById('statusDot');
-    docStatusText = doc.getElementById('statusText');
-
-    // Run connection health check immediately
-    checkUnityConnection();
-
-    // 5. Setup Action Handlers inside the IFrame
-    docSendBtn.addEventListener('click', handleSendMessage);
-    docChatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSendMessage();
-        }
-    });
-
-    docChatInput.addEventListener('input', () => {
-        docChatInput.style.height = 'auto';
-        docChatInput.style.height = docChatInput.scrollHeight + 'px';
-    });
-
-    docPlanModeBtn.addEventListener('click', () => {
-        if (isChatActive) return;
-        currentMode = 'plan';
-        docPlanModeBtn.classList.add('active');
-        docBuildModeBtn.classList.remove('active');
-    });
-
-    docBuildModeBtn.addEventListener('click', () => {
-        if (isChatActive) return;
-        currentMode = 'build';
-        docBuildModeBtn.classList.add('active');
-        docPlanModeBtn.classList.remove('active');
-    });
-
-    docClearChatBtn.addEventListener('click', () => {
-        if (isChatActive) return;
-        messageHistory = [];
-        docChatFeed.innerHTML = `
-            <div class="message-row assistant">
-                <div class="bubble">
-                    <p>Sohbet geçmişi temizlendi! 🧹 Yeni bir çalışma başlatabilirsiniz.</p>
-                    <p>Şu anda **${currentMode === 'plan' ? 'Plan' : 'Build'} Modu**'ndayım.</p>
-                </div>
-            </div>
-        `;
-    });
-
-    docToggleSettingsBtn.addEventListener('click', () => {
-        settingsDrawer.classList.toggle('open');
-    });
-
-    // 6. Navigation Event Delegation (Click Tab toggles)
-    headerContainer.addEventListener('click', (e) => {
-        const btn = e.target.closest('button');
-        if (!btn) return;
-
-        if (btn.id === 'customChatTabBtn') {
-            currentTab = 'chat';
-        } else {
-            currentTab = 'inspector';
-        }
-        syncLayoutState(doc, headerContainer, contentContainer, chatPane, chatTabBtn);
-    });
-
-    // Initial state sync
-    syncLayoutState(doc, headerContainer, contentContainer, chatPane, chatTabBtn);
-
-    // 7. MutationObserver to fight off React virtual DOM updates
-    const observer = new MutationObserver(() => {
-        // Verify custom chat button is still in DOM
-        if (!doc.getElementById('customChatTabBtn')) {
-            const currentToolsBtn = Array.from(headerContainer.querySelectorAll('button')).find(b => b.textContent.trim().includes('Tools'));
-            if (currentToolsBtn) {
-                currentToolsBtn.parentNode.insertBefore(chatTabBtn, currentToolsBtn.nextSibling);
-            }
-        }
-
-        // Verify custom chat pane is still appended
-        if (!doc.getElementById('customChatPane')) {
-            mainRightPane.appendChild(chatPane);
-        }
-
-        // Keep layouts in sync
-        syncLayoutState(doc, headerContainer, contentContainer, chatPane, chatTabBtn);
-    });
-
-    observer.observe(mainRightPane, { childList: true, subtree: true });
-}
-
-function syncLayoutState(doc, headerContainer, contentContainer, chatPane, chatTabBtn) {
-    const { activeClass, inactiveClass } = getTabClasses(headerContainer);
-
-    if (currentTab === 'chat') {
-        contentContainer.style.display = 'none';
-        chatPane.style.display = 'flex';
-
-        if (activeClass) chatTabBtn.className = activeClass;
-        if (inactiveClass) {
-            Array.from(headerContainer.querySelectorAll('button')).forEach(btn => {
-                if (btn.id !== 'customChatTabBtn') {
-                    btn.className = inactiveClass;
-                }
-            });
-        }
-    } else {
-        contentContainer.style.display = '';
-        chatPane.style.display = 'none';
-
-        if (inactiveClass) chatTabBtn.className = inactiveClass;
-    }
-}
-
-// Start watching the iframe load
-iframe.addEventListener('load', startIntegrationLoop);
-if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-    startIntegrationLoop();
-}
-
-// UI messages
+// --- UI Helpers ---
 function appendMessage(role, text) {
-    if (!docChatFeed) return;
     const row = document.createElement('div');
     row.className = `message-row ${role}`;
     
@@ -993,19 +639,18 @@ function appendMessage(role, text) {
         
     bubble.innerHTML = formattedText;
     row.appendChild(bubble);
-    docChatFeed.appendChild(row);
-    docChatFeed.scrollTop = docChatFeed.scrollHeight;
+    chatFeed.appendChild(row);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
     return bubble;
 }
 
 function appendToolBox(name, args) {
-    if (!docChatFeed) return null;
     const box = document.createElement('div');
     box.className = 'tool-execution-box';
     
     const header = document.createElement('div');
     header.className = 'tool-header';
-    header.innerHTML = `<span>⚙️ Araç Çağrısı: <strong>${name}</strong></span><span class="tool-status running">Çalıştırılıyor...</span>`;
+    header.innerHTML = `<span>⚙️ ARAÇ ÇAĞRISI: <strong>${name}</strong></span><span class="tool-status running">ÇALIŞTIRILIYOR...</span>`;
     box.appendChild(header);
     
     const body = document.createElement('div');
@@ -1013,46 +658,45 @@ function appendToolBox(name, args) {
     body.textContent = `Argümanlar:\n${JSON.stringify(args, null, 2)}`;
     box.appendChild(body);
     
-    docChatFeed.appendChild(box);
-    docChatFeed.scrollTop = docChatFeed.scrollHeight;
+    chatFeed.appendChild(box);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
     
     return {
         updateStatus: (statusText, isError = false) => {
             const statusSpan = header.querySelector('.tool-status');
-            statusSpan.textContent = statusText;
+            statusSpan.textContent = statusText.toUpperCase();
             statusSpan.className = `tool-status ${isError ? 'error' : 'success'}`;
         },
         appendOutput: (output) => {
             body.textContent += `\n\nYanıt:\n${JSON.stringify(output, null, 2)}`;
-            docChatFeed.scrollTop = docChatFeed.scrollHeight;
+            chatFeed.scrollTop = chatFeed.scrollHeight;
         }
     };
 }
 
 function appendPlanConfirmPanel() {
-    if (!docChatFeed) return;
-    const doc = iframe.contentDocument || iframe.contentWindow.document;
-    const box = doc.createElement('div');
+    const box = document.createElement('div');
     box.className = 'plan-confirmation-box';
     box.innerHTML = `
-        <h4>Plan Hazırlandı! 🔮</h4>
+        <h4>PLAN HAZIRLANDI! 🔮</h4>
         <p>Planı onaylayıp Build Moduna geçerek değişiklikleri uygulamak ister misiniz?</p>
-        <button class="plan-confirm-btn" id="confirmPlanBtn">Planı Onayla ve Derle</button>
+        <button class="plan-confirm-btn" id="confirmPlanBtn">PLANi ONAYLA VE DERLE</button>
     `;
-    docChatFeed.appendChild(box);
-    docChatFeed.scrollTop = docChatFeed.scrollHeight;
+    chatFeed.appendChild(box);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
 
-    doc.getElementById('confirmPlanBtn').addEventListener('click', () => {
+    document.getElementById('confirmPlanBtn').addEventListener('click', () => {
         box.remove();
         currentMode = 'build';
-        docBuildModeBtn.classList.add('active');
-        docPlanModeBtn.classList.remove('active');
+        buildModeBtn.classList.add('active');
+        planModeBtn.classList.remove('active');
+        modeStatusText.textContent = 'BUILD MODU AKTİF';
         appendMessage('assistant', 'Plan onaylandı! 🛠️ Build Moduna geçildi. Değişiklikleri uygulamaya başlıyorum.');
         runBuildProcess();
     });
 }
 
-// Bridge execution to local node server
+// --- Network HTTP Calls ---
 async function executeUnityTool(name, args) {
     try {
         const response = await fetch(`${UNITY_URL}/tools/${name}`, {
@@ -1066,7 +710,6 @@ async function executeUnityTool(name, args) {
     }
 }
 
-// Request LLM endpoint
 async function callLLM(apiMessages, useTools = false) {
     const endpoint = endpointInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
@@ -1100,19 +743,27 @@ async function callLLM(apiMessages, useTools = false) {
     return await res.json();
 }
 
+// --- Chat Actions & Loops ---
+sendBtn.addEventListener('click', handleSendMessage);
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage();
+    }
+});
+
 async function handleSendMessage() {
-    if (!docChatInput) return;
-    const text = docChatInput.value.trim();
+    const text = chatInput.value.trim();
     if (!text || isChatActive) return;
 
-    docChatInput.value = '';
-    docChatInput.style.height = 'auto';
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
     
     appendMessage('user', text);
     messageHistory.push({ role: 'user', content: text });
 
     isChatActive = true;
-    docSendBtn.disabled = true;
+    sendBtn.disabled = true;
 
     try {
         if (currentMode === 'plan') {
@@ -1124,7 +775,10 @@ async function handleSendMessage() {
         appendMessage('assistant', `⚠️ Hata oluştu: ${error.message}`);
     } finally {
         isChatActive = false;
-        docSendBtn.disabled = false;
+        sendBtn.disabled = false;
+        
+        // Auto refresh hierarchy after tools execution loop ends
+        setTimeout(refreshHierarchy, 1000);
     }
 }
 
@@ -1137,8 +791,8 @@ async function runPlanProcess() {
     appendMessage('assistant', 'Plan hazırlanıyor...');
     const result = await callLLM(apiMessages, false);
     
-    if (docChatFeed.lastElementChild && docChatFeed.lastElementChild.textContent.includes('Plan hazırlanıyor...')) {
-        docChatFeed.lastElementChild.remove();
+    if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Plan hazırlanıyor...')) {
+        chatFeed.lastElementChild.remove();
     }
 
     const text = result.choices[0].message.content;
@@ -1167,11 +821,11 @@ async function runBuildProcess() {
         const choice = result.choices[0];
         const msg = choice.message;
 
-        if (docChatFeed.lastElementChild && docChatFeed.lastElementChild.textContent.includes('İşlem yapılıyor...')) {
-            docChatFeed.lastElementChild.remove();
+        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('İşlem yapılıyor...')) {
+            chatFeed.lastElementChild.remove();
         }
-        if (docChatFeed.lastElementChild && docChatFeed.lastElementChild.textContent.includes('Sonuçlar analiz ediliyor...')) {
-            docChatFeed.lastElementChild.remove();
+        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Sonuçlar analiz ediliyor...')) {
+            chatFeed.lastElementChild.remove();
         }
 
         if (msg.content) {

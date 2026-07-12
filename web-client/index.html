@@ -8,10 +8,10 @@
 </head>
 <body>
     <div class="app-workspace">
-        <!-- Slide-out Settings Drawer (overlays the entire app) -->
+        <!-- Slide-out Settings Drawer (overlays from the left) -->
         <aside id="settingsDrawer" class="settings-drawer">
             <div class="drawer-header">
-                <h3>API Ayarları</h3>
+                <h3>API AYARLARI</h3>
                 <button id="closeSettingsBtn" class="drawer-close-btn">&times;</button>
             </div>
             <div class="settings-box">
@@ -33,35 +33,24 @@
             </div>
         </aside>
 
-        <!-- Main Inspector Frame (occupies 100% of viewport) -->
-        <section class="inspector-pane">
-            <iframe id="inspectorIFrame" src="about:blank"></iframe>
-        </section>
-    </div>
-
-    <!-- Hidden Template for our Chat Pane (injected into the iframe dynamically) -->
-    <template id="chatPaneTemplate">
-        <div id="customChatPane" class="custom-chat-pane">
-            <header class="chat-header">
-                <div class="chat-header-left" style="display: flex; align-items: center; gap: 8px;">
-                    <h2>AI Assistant</h2>
-                    <div class="status-indicator" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; padding: 2px 8px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                        <div id="statusDot" class="status-dot" style="width: 6px; height: 6px; background-color: #dc2626; border-radius: 50%;"></div>
-                        <span id="statusText" class="status-text" style="font-size: 9px; font-weight: 600; color: #475569;">Bağlanıyor...</span>
+        <!-- Left Column: Chat Assistant -->
+        <section class="chat-pane">
+            <header class="pane-header">
+                <div class="header-left">
+                    <span class="logo-icon">🎮</span>
+                    <span class="logo-text">UNITY AI STUDIO</span>
+                    <div class="status-indicator">
+                        <div id="statusDot" class="status-dot"></div>
+                        <span id="statusText" class="status-text">OFFLINE</span>
                     </div>
                 </div>
-                <div class="chat-header-center">
-                    <div class="mode-toggle-container">
-                        <button id="planModeBtn" class="mode-btn plan active">🔮 Plan Modu</button>
-                        <button id="buildModeBtn" class="mode-btn build">🛠️ Build Modu</button>
-                    </div>
-                </div>
-                <div class="chat-header-right">
-                    <button id="clearChatBtn" class="chat-action-btn" title="Sohbeti Temizle">🗑️ Temizle</button>
-                    <button id="toggleSettingsBtn" class="chat-action-btn" title="API Ayarları">⚙️ Ayarlar</button>
+                <div class="header-actions">
+                    <button id="clearChatBtn" class="action-btn" title="Sohbeti Temizle">🗑️ TEMİZLE</button>
+                    <button id="toggleSettingsBtn" class="action-btn" title="API Ayarları">⚙️ AYARLAR</button>
                 </div>
             </header>
 
+            <!-- Chat Message Feed -->
             <div id="chatFeed" class="chat-feed">
                 <div class="message-row assistant">
                     <div class="bubble">
@@ -71,28 +60,75 @@
                 </div>
             </div>
 
+            <!-- Input area (Integrated Mode Selector and Text Area) -->
             <div class="input-area">
-                <textarea id="chatInput" class="chat-input" placeholder="Unity'de ne yapmak istersin? (örn: Sahneye kırmızı bir küp ekle)" rows="1"></textarea>
-                <button id="sendBtn" class="send-btn" aria-label="Gönder">🚀</button>
+                <div class="input-top-row">
+                    <div class="mode-toggle-container">
+                        <button id="planModeBtn" class="mode-btn plan active">🔮 PLAN</button>
+                        <button id="buildModeBtn" class="mode-btn build">🛠️ BUILD</button>
+                    </div>
+                    <span id="modeStatusText" class="mode-status-text">PLAN MODU AKTİF</span>
+                </div>
+                <div class="input-bottom-row">
+                    <textarea id="chatInput" class="chat-input" placeholder="Unity'de ne yapmak istersin? (örn: Sahneye kırmızı bir küp ekle)" rows="1"></textarea>
+                    <button id="sendBtn" class="send-btn" aria-label="Gönder">🚀</button>
+                </div>
             </div>
-        </div>
-    </template>
+        </section>
+
+        <!-- Right Column: Unity Live Dashboard -->
+        <section class="dashboard-pane">
+            <header class="pane-header">
+                <!-- Dashboard tabs styled like inspector tabs -->
+                <div class="dashboard-tabs">
+                    <button id="tabHierarchyBtn" class="tab-btn active">🌳 HIYARARŞİ</button>
+                    <button id="tabConsoleBtn" class="tab-btn">📟 KONSOL</button>
+                    <button id="tabCameraBtn" class="tab-btn">📸 GÖRÜNTÜ AL</button>
+                </div>
+            </header>
+
+            <!-- Tab Content Screens -->
+            <div class="dashboard-content">
+                <!-- Hierarchy View -->
+                <div id="hierarchyScreen" class="tab-screen active">
+                    <div class="screen-header">
+                        <h3>SAHNE HİYERARŞİSİ</h3>
+                        <button id="refreshHierarchyBtn" class="action-btn">🔄 YENİLE</button>
+                    </div>
+                    <div id="hierarchyTree" class="hierarchy-tree">
+                        <p class="empty-state">Hiyerarşi verisi yükleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- Console View -->
+                <div id="consoleScreen" class="tab-screen">
+                    <div class="screen-header">
+                        <h3>EDİTÖR KONSOL LOGLARI</h3>
+                        <button id="refreshConsoleBtn" class="action-btn">🔄 TEMİZLE/YENİLE</button>
+                    </div>
+                    <div id="consoleLogs" class="console-logs">
+                        <p class="empty-state">Konsol logları yükleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- Camera View -->
+                <div id="cameraScreen" class="tab-screen">
+                    <div class="screen-header">
+                        <h3>SAHNE EKRAN GÖRÜNTÜSÜ</h3>
+                        <div class="capture-actions">
+                            <button id="captureSceneBtn" class="action-btn">📸 SCENE VIEW YAKALA</button>
+                            <button id="captureGameBtn" class="action-btn">🎮 GAME VIEW YAKALA</button>
+                        </div>
+                    </div>
+                    <div id="screenshotContainer" class="screenshot-container">
+                        <p class="empty-state">Henüz yakalanmış bir görüntü yok. Yukarıdaki butonlarla ekran görüntüsü alabilirsiniz.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
 
     <!-- Core App Logic -->
-    <script>
-        // Init MCP Inspector IFrame URL from Electron
-        window.initMCPUrl = function(url) {
-            const iframe = document.getElementById('inspectorIFrame');
-            if (iframe) {
-                iframe.src = url;
-            }
-        };
-        window.addEventListener('DOMContentLoaded', () => {
-            if (window.mcpUrlCached) {
-                window.initMCPUrl(window.mcpUrlCached);
-            }
-        });
-    </script>
     <script src="app.js"></script>
 </body>
 </html>
