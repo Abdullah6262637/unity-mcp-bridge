@@ -125,23 +125,23 @@ chatInput.addEventListener('input', () => {
 async function refreshHierarchy() {
     hierarchyTree.innerHTML = '<p class="empty-state">Hiyerarşi güncelleniyor...</p>';
     const data = await executeUnityTool('get_scene_hierarchy', {});
-    if (data && data.scene) {
-        renderHierarchy(data.scene);
+    if (data && data.success && data.hierarchy) {
+        renderHierarchy(data.hierarchy);
     } else {
         hierarchyTree.innerHTML = '<p class="empty-state">Hiyerarşi alınamadı. Unity bağlı olmayabilir.</p>';
     }
 }
 refreshHierarchyBtn.addEventListener('click', refreshHierarchy);
 
-function renderHierarchy(sceneData) {
+function renderHierarchy(hierarchy) {
     hierarchyTree.innerHTML = '';
-    if (!sceneData || !sceneData.roots || sceneData.roots.length === 0) {
+    if (!hierarchy || hierarchy.length === 0) {
         hierarchyTree.innerHTML = '<p class="empty-state">Sahnede hiç GameObject yok.</p>';
         return;
     }
 
     const container = document.createElement('div');
-    sceneData.roots.forEach(root => {
+    hierarchy.forEach(root => {
         container.appendChild(createNodeRow(root, 0));
     });
     hierarchyTree.appendChild(container);
@@ -170,7 +170,7 @@ function createNodeRow(node, depth) {
     const components = document.createElement('span');
     components.className = 'node-components';
     if (node.components && node.components.length > 0) {
-        components.textContent = `(${node.components.map(c => c.type).join(', ')})`;
+        components.textContent = `(${node.components.join(', ')})`;
     }
 
     row.appendChild(icon);
@@ -789,6 +789,9 @@ async function handleSendMessage() {
         isChatActive = false;
         sendBtn.disabled = false;
         
+        // Prune intermediate tool details to save LLM context window space and avoid limit failures
+        messageHistory = messageHistory.filter(msg => msg.role === 'user' || (msg.role === 'assistant' && msg.content));
+
         // Auto refresh hierarchy after tools execution loop ends
         setTimeout(refreshHierarchy, 1000);
     }
