@@ -1035,55 +1035,23 @@ chatInput.addEventListener('keydown', (e) => {
     }
 });
 
-let activeTicker = null;
+let activeStatusBubble = null;
 
-function startStatusTicker(type) {
-    if (activeTicker) {
-        activeTicker.stop();
+function setStatusMessage(message) {
+    if (activeStatusBubble) {
+        activeStatusBubble.innerHTML = message;
+    } else {
+        activeStatusBubble = appendMessage('assistant', message);
+        activeStatusBubble.classList.add('status-ticker');
     }
-    
-    const planStatuses = [
-        "🔍 Unity projesi taranıyor...",
-        "🌳 Sahne hiyerarşisi inceleniyor...",
-        "📂 Proje asset dosyaları listeleniyor...",
-        "📝 C# script kod yapıları analiz ediliyor...",
-        "📐 Değişiklik yapılacak alanlar tespit ediliyor...",
-        "📋 Adım adım detaylı plan şablonu hazırlanıyor..."
-    ];
-    
-    const buildStatuses = [
-        "⚡ Değişiklikler Unity editörüne gönderiliyor...",
-        "🛠️ Sahne nesneleri güncelleniyor...",
-        "📟 C# derleme ve kod durumu izleniyor...",
-        "🌳 Değişiklikler canlı sahneyle doğrulanıyor...",
-        "📸 Canlı ekran görüntüsü analiz ediliyor...",
-        "📊 Yapılan işlemler kontrol ediliyor...",
-        "📋 Sonuç raporu derleniyor..."
-    ];
-    
-    const statuses = type === 'plan' ? planStatuses : buildStatuses;
-    let idx = 0;
-    
-    // Append the initial message
-    const bubble = appendMessage('assistant', statuses[0]);
-    bubble.classList.add('status-ticker');
-    
-    const intervalId = setInterval(() => {
-        idx = (idx + 1) % statuses.length;
-        bubble.innerHTML = statuses[idx];
-    }, 1500);
-    
-    activeTicker = {
-        stop: () => {
-            clearInterval(intervalId);
-            // Remove the ticker message row from the feed
-            const row = bubble.closest('.message-row');
-            if (row) row.remove();
-            activeTicker = null;
-        }
-    };
-    
-    return activeTicker;
+}
+
+function clearStatusMessage() {
+    if (activeStatusBubble) {
+        const row = activeStatusBubble.closest('.message-row');
+        if (row) row.remove();
+        activeStatusBubble = null;
+    }
 }
 
 async function handleSendMessage() {
@@ -1111,7 +1079,7 @@ async function handleSendMessage() {
             window.electronAPI.logToTerminal('error', `Sohbet İşlem Hatası: ${error.message}`);
         }
     } finally {
-        if (activeTicker) activeTicker.stop();
+        clearStatusMessage();
         isChatActive = false;
         sendBtn.disabled = false;
         
@@ -1128,8 +1096,6 @@ async function runPlanProcess() {
     let loopCount = 0;
     const maxLoops = 6; // Limit loops for planning to avoid infinite tool calls
 
-    startStatusTicker('plan');
-
     while (continueLoop && loopCount < maxLoops) {
         loopCount++;
         
@@ -1138,12 +1104,13 @@ async function runPlanProcess() {
             ...messageHistory
         ];
 
+        setStatusMessage("🤖 Yapay zeka yanıt/plan taslağı hazırlıyor...");
         const result = await callLLM(apiMessages, true);
         const choice = result.choices[0];
         const msg = choice.message;
 
         if (msg.content) {
-            if (activeTicker) activeTicker.stop(); // Stop ticker to print content
+            clearStatusMessage();
             appendMessage('assistant', msg.content);
             messageHistory.push({ role: 'assistant', content: msg.content });
         }
@@ -1155,6 +1122,13 @@ async function runPlanProcess() {
             for (const toolCall of msg.tool_calls) {
                 const name = toolCall.function.name;
                 const args = JSON.parse(toolCall.function.arguments);
+                
+                let details = '';
+                if (args.asset_path) details = `: ${args.asset_path}`;
+                else if (args.gameobject_path) details = `: ${args.gameobject_path}`;
+                else if (args.path) details = `: ${args.path}`;
+                
+                setStatusMessage(`⚙️ Unity aracı çalıştırılıyor: <strong>${name}</strong>${details}...`);
                 
                 // Show tools execution inside the chat
                 const uiBox = appendToolBox(name, args);
@@ -1176,13 +1150,12 @@ async function runPlanProcess() {
             }
 
             messageHistory.push(...toolResponses);
-            startStatusTicker('plan'); // Resume ticker for next turn analysis
         } else {
             continueLoop = false;
         }
     }
 
-    if (activeTicker) activeTicker.stop();
+    clearStatusMessage();
     appendPlanConfirmPanel();
 }
 
@@ -1190,8 +1163,6 @@ async function runBuildProcess() {
     let continueLoop = true;
     let loopCount = 0;
     const maxLoops = 10;
-
-    startStatusTicker('build');
 
     while (continueLoop && loopCount < maxLoops) {
         loopCount++;
@@ -1201,12 +1172,13 @@ async function runBuildProcess() {
             ...messageHistory
         ];
 
+        setStatusMessage("🤖 Yapay zeka kodu yazıyor ve sahneyi güncelliyor...");
         const result = await callLLM(apiMessages, true);
         const choice = result.choices[0];
         const msg = choice.message;
 
         if (msg.content) {
-            if (activeTicker) activeTicker.stop(); // Stop ticker to print content
+            clearStatusMessage();
             appendMessage('assistant', msg.content);
             messageHistory.push({ role: 'assistant', content: msg.content });
         }
@@ -1218,6 +1190,13 @@ async function runBuildProcess() {
             for (const toolCall of msg.tool_calls) {
                 const name = toolCall.function.name;
                 const args = JSON.parse(toolCall.function.arguments);
+                
+                let details = '';
+                if (args.asset_path) details = `: ${args.asset_path}`;
+                else if (args.gameobject_path) details = `: ${args.gameobject_path}`;
+                else if (args.path) details = `: ${args.path}`;
+                
+                setStatusMessage(`🛠️ Değişiklikler Unity'ye aktarılıyor: <strong>${name}</strong>${details}...`);
                 
                 const uiBox = appendToolBox(name, args);
                 const output = await executeUnityTool(name, args);
@@ -1236,11 +1215,10 @@ async function runBuildProcess() {
             }
 
             messageHistory.push(...toolResponses);
-            startStatusTicker('build'); // Resume ticker for next turn execution
         } else {
             continueLoop = false;
         }
     }
     
-    if (activeTicker) activeTicker.stop();
+    clearStatusMessage();
 }
