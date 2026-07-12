@@ -74,3 +74,27 @@ export const CaptureAnnotatedViewSchema = z.object({
   quality: z.enum(['low', 'medium', 'high']).optional().default('medium').describe('The resolution of the captured screen.'),
   target_paths: z.array(z.string()).optional().describe('Optional list of paths of specific GameObjects to annotate. If omitted, annotations default to root/renderers.'),
 });
+
+export const PlayModeActionSchema = z.object({});
+
+export const InspectRuntimeValueSchema = z.object({
+  gameobject_path: z.string().describe('The hierarchy path of the GameObject (e.g., /Player).'),
+  component_type: z.string().describe('The Component class name (e.g., Transform).'),
+  member_name: z.string().describe('The name of the public field or property to read (e.g., position or health).'),
+});
+
+export const SetRuntimeValueSchema = z.object({
+  gameobject_path: z.string().describe('The hierarchy path of the GameObject.'),
+  component_type: z.string().describe('The Component class name.'),
+  member_name: z.string().describe('The name of the public field or property to write.'),
+  value: z.string().describe('The string-formatted value to assign (e.g., "15", "true", "[0, 5, 0]").'),
+});
+
+export const WaitConditionSchema = z.object({
+  gameobject_path: z.string().describe('The hierarchy path of the GameObject to watch.'),
+  component_type: z.string().describe('The Component class name to check.'),
+  member_name: z.string().describe('The public field or property name to evaluate.'),
+  op: z.enum(['==', '!=', '<', '>', '<=', '>=']).describe('Comparison operator to apply.'),
+  value: z.string().describe('The target value to compare against (e.g., "10", "true").'),
+  timeout_ms: z.number().optional().default(5000).describe('Maximum timeout in milliseconds (default: 5000, max: 10000).'),
+});

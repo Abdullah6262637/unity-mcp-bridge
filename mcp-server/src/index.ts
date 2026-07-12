@@ -258,6 +258,81 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }
           }
         }
+      },
+      {
+        name: 'enter_play_mode',
+        description: 'Enters Play Mode in the Unity Editor.',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'exit_play_mode',
+        description: 'Exits Play Mode in the Unity Editor.',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'pause_play_mode',
+        description: 'Pauses the execution of the game in Play Mode.',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'step_frame',
+        description: 'Steps the execution of the game by a single frame (requires game to be paused).',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'inspect_runtime_value',
+        description: 'Reads the live value of a public field or property on a component of a GameObject.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            gameobject_path: { type: 'string', description: 'The hierarchy path of the GameObject (e.g., /Player).' },
+            component_type: { type: 'string', description: 'The Component class name (e.g., Transform).' },
+            member_name: { type: 'string', description: 'The public field or property to read (e.g., position).' }
+          },
+          required: ['gameobject_path', 'component_type', 'member_name']
+        }
+      },
+      {
+        name: 'set_runtime_value',
+        description: 'Dynamically writes/assigns a new value to a public field or property on a component of a GameObject at runtime.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            gameobject_path: { type: 'string', description: 'The hierarchy path of the GameObject.' },
+            component_type: { type: 'string', description: 'The Component class name.' },
+            member_name: { type: 'string', description: 'The public field or property to write.' },
+            value: { type: 'string', description: 'The string-formatted value to assign (e.g., "15", "true", "[0, 5, 0]").' }
+          },
+          required: ['gameobject_path', 'component_type', 'member_name', 'value']
+        }
+      },
+      {
+        name: 'wait_for_condition',
+        description: 'Asynchronously polls a condition on a component property and returns once the comparison evaluates to true (or times out).',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            gameobject_path: { type: 'string', description: 'The hierarchy path of the GameObject to watch.' },
+            component_type: { type: 'string', description: 'The Component class name to check.' },
+            member_name: { type: 'string', description: 'The public field or property name to evaluate.' },
+            op: { type: 'string', enum: ['==', '!=', '<', '>', '<=', '>='], description: 'Comparison operator.' },
+            value: { type: 'string', description: 'The target value to compare against.' },
+            timeout_ms: { type: 'number', description: 'Maximum timeout in milliseconds (default: 5000, max: 10000).' }
+          },
+          required: ['gameobject_path', 'component_type', 'member_name', 'op', 'value']
+        }
       }
     ]
   };
@@ -317,6 +392,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case 'capture_annotated_view':
         validatedArgs = schemas.CaptureAnnotatedViewSchema.parse(args);
+        break;
+      case 'enter_play_mode':
+      case 'exit_play_mode':
+      case 'pause_play_mode':
+      case 'step_frame':
+        validatedArgs = schemas.PlayModeActionSchema.parse(args);
+        break;
+      case 'inspect_runtime_value':
+        validatedArgs = schemas.InspectRuntimeValueSchema.parse(args);
+        break;
+      case 'set_runtime_value':
+        validatedArgs = schemas.SetRuntimeValueSchema.parse(args);
+        break;
+      case 'wait_for_condition':
+        validatedArgs = schemas.WaitConditionSchema.parse(args);
         break;
       // get_scene_hierarchy, get_compile_status, get_project_info have no schema parameters
     }

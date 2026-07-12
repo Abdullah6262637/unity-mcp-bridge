@@ -33,6 +33,8 @@ namespace UnityMCPBridge
         private static readonly ConcurrentQueue<PendingRequest> _pendingRequests = new ConcurrentQueue<PendingRequest>();
         private static bool _isRunning = false;
 
+        public static PendingRequest CurrentRequest { get; private set; }
+
         static MCPHttpServer()
         {
             // Register callback to run update loop in Editor
@@ -173,8 +175,10 @@ namespace UnityMCPBridge
             // Process queued requests on Unity's main thread
             while (_pendingRequests.TryDequeue(out var request))
             {
+                bool isDeferred = false;
                 try
                 {
+                    CurrentRequest = request;
                     string path = request.Context.Request.Url.AbsolutePath;
 
                     if (path == "/health")
@@ -186,8 +190,16 @@ namespace UnityMCPBridge
                     {
                         string toolName = path.Substring("/tools/".Length);
                         string jsonResponse = MCPToolRegistry.Dispatch(toolName, request.Body);
-                        request.ResponseBody = jsonResponse;
-                        request.ResponseStatus = 200;
+                        
+                        if (jsonResponse == "__DEFERRED__")
+                        {
+                            isDeferred = true;
+                        }
+                        else
+                        {
+                            request.ResponseBody = jsonResponse;
+                            request.ResponseStatus = 200;
+                        }
                     }
                     else
                     {
@@ -203,8 +215,12 @@ namespace UnityMCPBridge
                 }
                 finally
                 {
-                    // Resume background thread to send response
-                    request.WaitHandle.Set();
+                    CurrentRequest = null;
+                    if (!isDeferred)
+                    {
+                        // Resume background thread to send response
+                        request.WaitHandle.Set();
+                    }
                 }
             }
         }
