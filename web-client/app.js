@@ -55,6 +55,7 @@ const captureGameBtn = document.getElementById('captureGameBtn');
 const tabs = [
     { btn: tabHierarchyBtn, screen: hierarchyScreen, name: 'hierarchy' },
     { btn: document.getElementById('tabAssetsBtn'), screen: document.getElementById('assetsScreen'), name: 'assets' },
+    { btn: document.getElementById('tabScriptsBtn'), screen: document.getElementById('scriptsScreen'), name: 'scripts' },
     { btn: tabConsoleBtn, screen: consoleScreen, name: 'console' },
     { btn: tabCameraBtn, screen: cameraScreen, name: 'camera' }
 ];
@@ -363,12 +364,16 @@ function renderAssets(assets) {
         row.appendChild(pathSpan);
         row.appendChild(typeSpan);
         
-        // Fast click-to-input binding
+        // Fast click-to-input binding or script viewing
         row.addEventListener('click', () => {
-            chatInput.value += ` "${assetPath}"`;
-            chatInput.style.height = 'auto';
-            chatInput.style.height = (chatInput.scrollHeight) + 'px';
-            chatInput.focus();
+            if (assetPath.toLowerCase().endsWith('.cs')) {
+                openScript(assetPath);
+            } else {
+                chatInput.value += ` "${assetPath}"`;
+                chatInput.style.height = 'auto';
+                chatInput.style.height = (chatInput.scrollHeight) + 'px';
+                chatInput.focus();
+            }
         });
         
         assetsList.appendChild(row);
@@ -395,6 +400,77 @@ if (assetsSearchInput) {
         }
     });
 }
+
+// --- C# Script Viewer Implementation ---
+let currentScriptPath = '';
+
+async function openScript(assetPath) {
+    currentScriptPath = assetPath;
+    
+    const currentScriptTitle = document.getElementById('currentScriptTitle');
+    const refreshScriptBtn = document.getElementById('refreshScriptBtn');
+    const copyScriptPathBtn = document.getElementById('copyScriptPathBtn');
+    const scriptContentArea = document.getElementById('scriptContentArea');
+    
+    if (currentScriptTitle) currentScriptTitle.textContent = assetPath.toUpperCase();
+    if (scriptContentArea) scriptContentArea.innerHTML = '<p class="empty-state">Script okunuyor...</p>';
+    
+    // Show actions
+    if (refreshScriptBtn) refreshScriptBtn.style.display = 'block';
+    if (copyScriptPathBtn) copyScriptPathBtn.style.display = 'block';
+    
+    // Switch active tab to 'scripts'
+    tabs.forEach(x => {
+        x.btn.classList.remove('active');
+        x.screen.classList.remove('active');
+    });
+    const scriptTab = tabs.find(t => t.name === 'scripts');
+    if (scriptTab) {
+        scriptTab.btn.classList.add('active');
+        scriptTab.screen.classList.add('active');
+        activeDashboardTab = 'scripts';
+    }
+    
+    // Fetch script contents
+    const data = await executeUnityTool('read_script', { asset_path: assetPath });
+    if (data && data.success && data.content !== undefined) {
+        if (scriptContentArea) {
+            scriptContentArea.innerHTML = '';
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            code.className = 'script-code-block';
+            code.textContent = data.content;
+            pre.appendChild(code);
+            scriptContentArea.appendChild(pre);
+        }
+    } else {
+        let errMsg = '';
+        if (data && data.error) errMsg = ` (Hata: ${data.error})`;
+        if (scriptContentArea) {
+            scriptContentArea.innerHTML = `<p class="empty-state">Script okunamadı${errMsg}.</p>`;
+        }
+    }
+}
+
+const refreshScriptBtn = document.getElementById('refreshScriptBtn');
+if (refreshScriptBtn) {
+    refreshScriptBtn.addEventListener('click', () => {
+        if (currentScriptPath) openScript(currentScriptPath);
+    });
+}
+
+const copyScriptPathBtn = document.getElementById('copyScriptPathBtn');
+if (copyScriptPathBtn) {
+    copyScriptPathBtn.addEventListener('click', () => {
+        if (currentScriptPath) {
+            chatInput.value += ` "${currentScriptPath}"`;
+            chatInput.style.height = 'auto';
+            chatInput.style.height = (chatInput.scrollHeight) + 'px';
+            chatInput.focus();
+        }
+    });
+}
+
 
 // --- Connection Polling & Auto Refresh ---
 async function checkUnityConnection() {
