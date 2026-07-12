@@ -12,6 +12,9 @@ let messageHistory = [];
 const planModeBtn = document.getElementById('planModeBtn');
 const buildModeBtn = document.getElementById('buildModeBtn');
 const clearChatBtn = document.getElementById('clearChatBtn');
+const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const settingsDrawer = document.getElementById('settingsDrawer');
 const endpointInput = document.getElementById('endpointInput');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const modelSelect = document.getElementById('modelSelect');
@@ -20,7 +23,6 @@ const statusText = document.getElementById('statusText');
 const chatFeed = document.getElementById('chatFeed');
 const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
-const modeBadge = document.getElementById('modeBadge');
 
 // List of all Unity MCP Tools (Highly optimized to minimize token context size)
 const TOOLS = [
@@ -397,8 +399,6 @@ planModeBtn.addEventListener('click', () => {
     currentMode = 'plan';
     planModeBtn.classList.add('active');
     buildModeBtn.classList.remove('active');
-    modeBadge.textContent = 'Plan Modu Aktif';
-    modeBadge.className = 'current-mode-badge plan';
 });
 
 buildModeBtn.addEventListener('click', () => {
@@ -406,8 +406,15 @@ buildModeBtn.addEventListener('click', () => {
     currentMode = 'build';
     buildModeBtn.classList.add('active');
     planModeBtn.classList.remove('active');
-    modeBadge.textContent = 'Build Modu Aktif';
-    modeBadge.className = 'current-mode-badge build';
+});
+
+// Settings Drawer Actions
+toggleSettingsBtn.addEventListener('click', () => {
+    settingsDrawer.classList.toggle('open');
+});
+
+closeSettingsBtn.addEventListener('click', () => {
+    settingsDrawer.classList.remove('open');
 });
 
 // Clear Chat Action
@@ -499,8 +506,6 @@ function appendPlanConfirmPanel() {
         currentMode = 'build';
         buildModeBtn.classList.add('active');
         planModeBtn.classList.remove('active');
-        modeBadge.textContent = 'Build Modu Aktif';
-        modeBadge.className = 'current-mode-badge build';
         appendMessage('assistant', 'Plan onaylandı! 🛠️ Build Moduna geçildi. Değişiklikleri uygulamaya başlıyorum.');
         runBuildProcess();
     });
