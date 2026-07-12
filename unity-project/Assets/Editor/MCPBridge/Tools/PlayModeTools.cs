@@ -243,8 +243,8 @@ namespace UnityMCPBridge
             }
 
             // Compare as numbers if possible
-            if (double.TryParse(rawVal.ToString(), System.Globalization.CultureInfo.InvariantCulture, out double dVal) &&
-                double.TryParse(targetStr, System.Globalization.CultureInfo.InvariantCulture, out double dTarget))
+            if (double.TryParse(rawVal.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double dVal) &&
+                double.TryParse(targetStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double dTarget))
             {
                 switch (op)
                 {
