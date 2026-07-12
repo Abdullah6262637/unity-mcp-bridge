@@ -845,9 +845,18 @@ const TOOLS = [
 
 // System Prompts
 const PLAN_SYSTEM_PROMPT = `You are a Unity AI Givelopment Assistant running in PLAN MODE.
-Analyze the user request, inspect the project, and present a detailed implementation plan.
-Provide a clear markdown checklist of tasks that need to be accomplished.
-DO NOT execute or suggest calling any tools in this mode. Only explain the plan and wait for approval.`;
+Your goal is to inspect the project structure, locate relevant scripts, prefabs, and scene objects, and draft a deep, comprehensive implementation plan.
+
+RULES FOR PLAN MODE:
+1. You MUST use read-only tools (like get_scene_hierarchy, list_assets, read_script, get_project_info) to investigate the current project state first. Do NOT make assumptions about file paths or scene hierarchies.
+2. You MUST NOT use write tools (like create_gameobject, delete_gameobject, write_script, create_prefab) to make changes in this mode. Only read and inspect.
+3. Once you have gathered sufficient context, write a detailed, step-by-step markdown implementation plan.
+4. The plan must include:
+   - **Mevcut Durum Analizi**: What files/GameObjects were found.
+   - **Değişiklik Planı**: Exactly what scripts will be modified, what new objects/components will be added.
+   - **Görev Listesi**: A clear checklist of implementation tasks.
+   - **Doğrulama Adımları**: How to verify the changes (e.g., playmode tests, console verification).
+5. Do not suggest or write code inside the plan itself, just describe the changes and structure. Wait for the user to approve the plan.`;
 
 const BUILD_SYSTEM_PROMPT = `You are a Unity AI Givelopment Assistant running in BUILD MODE.
 Execute the approved plan using the available Unity tools.
@@ -1048,21 +1057,70 @@ async function handleSendMessage() {
 }
 
 async function runPlanProcess() {
-    const apiMessages = [
-        { role: 'system', content: PLAN_SYSTEM_PROMPT },
-        ...messageHistory
-    ];
+    let continueLoop = true;
+    let loopCount = 0;
+    const maxLoops = 6; // Limit loops for planning to avoid infinite tool calls
 
-    appendMessage('assistant', 'Plan hazırlanıyor...');
-    const result = await callLLM(apiMessages, false);
-    
-    if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Plan hazırlanıyor...')) {
-        chatFeed.lastElementChild.remove();
+    appendMessage('assistant', 'Proje yapısı inceleniyor ve plan hazırlanıyor...');
+
+    while (continueLoop && loopCount < maxLoops) {
+        loopCount++;
+        
+        const apiMessages = [
+            { role: 'system', content: PLAN_SYSTEM_PROMPT },
+            ...messageHistory
+        ];
+
+        const result = await callLLM(apiMessages, true);
+        const choice = result.choices[0];
+        const msg = choice.message;
+
+        // Clean up status messages
+        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Proje yapısı inceleniyor')) {
+            chatFeed.lastElementChild.remove();
+        }
+        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Plan analiz ediliyor...')) {
+            chatFeed.lastElementChild.remove();
+        }
+
+        if (msg.content) {
+            appendMessage('assistant', msg.content);
+            messageHistory.push({ role: 'assistant', content: msg.content });
+        }
+
+        if (msg.tool_calls && msg.tool_calls.length > 0) {
+            messageHistory.push(msg);
+
+            const toolResponses = [];
+            for (const toolCall of msg.tool_calls) {
+                const name = toolCall.function.name;
+                const args = JSON.parse(toolCall.function.arguments);
+                
+                // Show tools execution inside the chat
+                const uiBox = appendToolBox(name, args);
+                
+                // Execute the tool
+                const output = await executeUnityTool(name, args);
+                
+                if (uiBox) {
+                    uiBox.updateStatus(output.success !== false ? 'Tamamlandı' : 'Hata Oluştu', output.success === false);
+                    uiBox.appendOutput(output);
+                }
+
+                toolResponses.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: name,
+                    content: JSON.stringify(output)
+                });
+            }
+
+            messageHistory.push(...toolResponses);
+            appendMessage('assistant', 'Plan analiz ediliyor...');
+        } else {
+            continueLoop = false;
+        }
     }
-
-    const text = result.choices[0].message.content;
-    appendMessage('assistant', text);
-    messageHistory.push({ role: 'assistant', content: text });
 
     appendPlanConfirmPanel();
 }
