@@ -124,7 +124,7 @@ namespace UnityMCPBridge
             return $"{{\"success\":true,\"job_id\":\"{job.jobId}\",\"status\":\"completed\",\"results\":{resultsArray}}}";
         }
 
-        private class TestRunnerCallback : ICallback
+        private class TestRunnerCallback : ICallbacks
         {
             private readonly TestJob _job;
 
