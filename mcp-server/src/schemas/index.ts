@@ -65,3 +65,12 @@ export const ListAssetsSchema = z.object({
   folder_path: z.string().optional().default('Assets').describe('The folder path to scan (must start with Assets, default: Assets).'),
   filter: z.string().optional().describe('Optional filter for assets (e.g. name search or type filter like "t:Prefab" or "t:Material").'),
 });
+
+export const CaptureViewSchema = z.object({
+  quality: z.enum(['low', 'medium', 'high']).optional().default('medium').describe('The resolution of the captured screen (low=640x480, medium=1280x720, high=1920x1080).'),
+});
+
+export const CaptureAnnotatedViewSchema = z.object({
+  quality: z.enum(['low', 'medium', 'high']).optional().default('medium').describe('The resolution of the captured screen.'),
+  target_paths: z.array(z.string()).optional().describe('Optional list of paths of specific GameObjects to annotate. If omitted, annotations default to root/renderers.'),
+});

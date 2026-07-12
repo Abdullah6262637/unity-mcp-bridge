@@ -6,7 +6,7 @@ using UnityEditor.TestTools.TestRunner.Api;
 
 namespace UnityMCPBridge
 {
-    public static class TestTools
+    public class TestTools : IMCPToolProvider
     {
         [Serializable]
         private class RunTestsArgs
@@ -44,7 +44,7 @@ namespace UnityMCPBridge
 
         private static readonly Dictionary<string, TestJob> _jobs = new Dictionary<string, TestJob>();
 
-        public static void Register()
+        public void RegisterTools()
         {
             MCPToolRegistry.Register("run_tests", RunTests);
             MCPToolRegistry.Register("get_test_status", GetTestStatus);

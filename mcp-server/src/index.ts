@@ -211,6 +211,53 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: 'object',
           properties: {}
         }
+      },
+      {
+        name: 'capture_game_view',
+        description: 'Captures a PNG screenshot from the main Game View camera.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            quality: {
+              type: 'string',
+              enum: ['low', 'medium', 'high'],
+              description: 'Resolution of screenshot (low=640x480, medium=1280x720, high=1920x1080).'
+            }
+          }
+        }
+      },
+      {
+        name: 'capture_scene_view',
+        description: 'Captures a PNG screenshot from the Editor Scene View camera.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            quality: {
+              type: 'string',
+              enum: ['low', 'medium', 'high'],
+              description: 'Resolution of screenshot (low=640x480, medium=1280x720, high=1920x1080).'
+            }
+          }
+        }
+      },
+      {
+        name: 'capture_annotated_view',
+        description: 'Captures a screenshot with colored dots marking GameObject positions.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            quality: {
+              type: 'string',
+              enum: ['low', 'medium', 'high'],
+              description: 'Resolution of screenshot.'
+            },
+            target_paths: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Paths of specific GameObjects to annotate. Default is root objects & renderers.'
+            }
+          }
+        }
       }
     ]
   };
@@ -264,6 +311,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'list_assets':
         validatedArgs = schemas.ListAssetsSchema.parse(args);
         break;
+      case 'capture_game_view':
+      case 'capture_scene_view':
+        validatedArgs = schemas.CaptureViewSchema.parse(args);
+        break;
+      case 'capture_annotated_view':
+        validatedArgs = schemas.CaptureAnnotatedViewSchema.parse(args);
+        break;
       // get_scene_hierarchy, get_compile_status, get_project_info have no schema parameters
     }
 
@@ -272,6 +326,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     // Check if the Unity tool returned success flag
     const isError = result.success === false;
+
+    // Special handling for Vision tools to return actual base64 images
+    if (!isError && (name === 'capture_game_view' || name === 'capture_scene_view' || name === 'capture_annotated_view')) {
+      const imgData = result.data?.image;
+      const mimeType = result.data?.mimeType || 'image/png';
+      
+      const contents: any[] = [
+        {
+          type: 'image',
+          data: imgData,
+          mimeType: mimeType
+        }
+      ];
+
+      if (name === 'capture_annotated_view' && result.data?.annotations) {
+        contents.push({
+          type: 'text',
+          text: `Annotations:\n${JSON.stringify(result.data.annotations, null, 2)}`
+        });
+      }
+
+      return {
+        content: contents,
+        isError: false
+      };
+    }
 
     return {
       content: [

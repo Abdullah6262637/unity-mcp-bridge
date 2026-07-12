@@ -8,7 +8,7 @@ using UnityEditor.Compilation;
 namespace UnityMCPBridge
 {
     [InitializeOnLoad]
-    public static class ScriptTools
+    public class ScriptTools : IMCPToolProvider
     {
         [Serializable]
         private class ReadArgs
@@ -44,7 +44,7 @@ namespace UnityMCPBridge
             _latestMessages.AddRange(messages);
         }
 
-        public static void Register()
+        public void RegisterTools()
         {
             MCPToolRegistry.Register("read_script", ReadScript);
             MCPToolRegistry.Register("write_script", WriteScript);

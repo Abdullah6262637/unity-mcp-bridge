@@ -7,7 +7,7 @@ using UnityEngine.Rendering;
 
 namespace UnityMCPBridge
 {
-    public static class AssetTools
+    public class AssetTools : IMCPToolProvider
     {
         [Serializable]
         private class PrefabArgs
@@ -23,7 +23,7 @@ namespace UnityMCPBridge
             public string filter;
         }
 
-        public static void Register()
+        public void RegisterTools()
         {
             MCPToolRegistry.Register("create_prefab", CreatePrefab);
             MCPToolRegistry.Register("list_assets", ListAssets);

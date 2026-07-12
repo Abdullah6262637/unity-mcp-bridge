@@ -83,6 +83,9 @@ Restart your MCP client (e.g., Claude Desktop) to connect.
 | `create_prefab` | `gameobject_path`, `save_path` | Saves a GameObject structure as a reusable `.prefab`. |
 | `list_assets` | `folder_path?`, `filter?` | Scans directories for assets (supports search syntax like `t:Prefab`). |
 | `get_project_info` | (None) | Returns Unity version, platform, target backend, rendering pipeline. |
+| `capture_game_view` | `quality?` ("low"/"medium"/"high") | Captures a PNG screenshot from the main Game View camera. |
+| `capture_scene_view` | `quality?` ("low"/"medium"/"high") | Captures a PNG screenshot from the Editor Scene View camera. |
+| `capture_annotated_view` | `quality?`, `target_paths?` | Captures a screenshot with colored squares marking GameObject positions. |
 
 ---
 
@@ -98,6 +101,8 @@ Try these prompt ideas inside your MCP-enabled editor or chat interface:
   > "Run the EditMode unit tests. Let's poll its job ID until it compiles and outputs the result details."
 - **Debugging**:
   > "Let's read the latest 20 logs from the Unity console to find out why the asset failed to import."
+- **Vision & Screenshots**:
+  > "Capture a screenshot of the Scene View with annotations. Check the image and list which color markers correspond to which objects, then tell me if the lighting looks correct."
 
 ---
 
@@ -106,3 +111,13 @@ Try these prompt ideas inside your MCP-enabled editor or chat interface:
 1. **Local Access Only**: The HTTP Server in Unity is hardcoded to bind to `127.0.0.1`. It will reject outer network traffic for safety.
 2. **Main Thread Safety**: Unity APIs can only be touched from the main thread. The plugin listener runs on a background thread and queues requests in a thread-safe queue. The main thread processes them during the editor's update loop (`EditorApplication.update`) and signals the worker thread when the payload is ready.
 3. **Domain Reloads**: When C# scripts compile, Unity resets assembly state. The HTTP server hooks into compile start events to stop gracefully, preventing port lockups and crashes, and automatically restarts.
+4. **Standardised Response Envelope**: Every tool execution is captured and wrapped into a standardised response envelope to support structured parsing, execution metrics, and uniform error diagnostics:
+   ```json
+   {
+     "success": true,
+     "data": { ... },
+     "error": null,
+     "meta": { "duration_ms": 12, "unity_version": "2021.3.16f1" }
+   }
+   ```
+

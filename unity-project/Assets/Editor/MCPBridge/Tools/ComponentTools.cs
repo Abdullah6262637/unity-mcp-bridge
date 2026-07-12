@@ -5,7 +5,7 @@ using UnityEditor;
 
 namespace UnityMCPBridge
 {
-    public static class ComponentTools
+    public class ComponentTools : IMCPToolProvider
     {
         [Serializable]
         private class ComponentArgs
@@ -23,7 +23,7 @@ namespace UnityMCPBridge
             public string value;
         }
 
-        public static void Register()
+        public void RegisterTools()
         {
             MCPToolRegistry.Register("add_component", AddComponent);
             MCPToolRegistry.Register("remove_component", RemoveComponent);

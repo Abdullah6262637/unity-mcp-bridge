@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 namespace UnityMCPBridge
 {
-    public static class SceneTools
+    public class SceneTools : IMCPToolProvider
     {
         [Serializable]
         private class CreateArgs
@@ -23,7 +23,7 @@ namespace UnityMCPBridge
             public bool confirm;
         }
 
-        public static void Register()
+        public void RegisterTools()
         {
             MCPToolRegistry.Register("create_gameobject", CreateGameObject);
             MCPToolRegistry.Register("delete_gameobject", DeleteGameObject);

@@ -6,7 +6,7 @@ using UnityEditor;
 namespace UnityMCPBridge
 {
     [InitializeOnLoad]
-    public static class ConsoleTools
+    public class ConsoleTools : IMCPToolProvider
     {
         [Serializable]
         private class GetLogsArgs
@@ -33,6 +33,11 @@ namespace UnityMCPBridge
             Application.logMessageReceivedThreaded += OnLogMessageReceived;
         }
 
+        public void RegisterTools()
+        {
+            MCPToolRegistry.Register("get_console_logs", GetConsoleLogs);
+        }
+
         private static void OnLogMessageReceived(string condition, string stackTrace, LogType type)
         {
             lock (_lock)
@@ -52,10 +57,6 @@ namespace UnityMCPBridge
             }
         }
 
-        public static void Register()
-        {
-            MCPToolRegistry.Register("get_console_logs", GetConsoleLogs);
-        }
 
         private static string GetConsoleLogs(string jsonArgs)
         {
