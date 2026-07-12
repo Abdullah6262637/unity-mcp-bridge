@@ -128,7 +128,15 @@ async function refreshHierarchy() {
     if (data && data.success && data.hierarchy) {
         renderHierarchy(data.hierarchy);
     } else {
-        hierarchyTree.innerHTML = '<p class="empty-state">Hiyerarşi alınamadı. Unity bağlı olmayabilir.</p>';
+        let errMsg = '';
+        if (data) {
+            if (data.error) errMsg = ` (Hata: ${data.error})`;
+            else if (data.success === false) errMsg = ' (Sunucu başarısız yanıt döndürdü)';
+            else errMsg = ` (Yanıt formatı geçersiz: ${JSON.stringify(data).substring(0, 100)})`;
+        } else {
+            errMsg = ' (Sunucudan yanıt alınamadı)';
+        }
+        hierarchyTree.innerHTML = `<p class="empty-state">Hiyerarşi alınamadı${errMsg}. Unity bağlı olmayabilir.</p>`;
     }
 }
 refreshHierarchyBtn.addEventListener('click', refreshHierarchy);
@@ -190,10 +198,17 @@ function createNodeRow(node, depth) {
 // --- Refresh Console Logs ---
 async function refreshConsoleLogs() {
     const data = await executeUnityTool('get_console_logs', { count: 30 });
-    if (data && data.logs) {
+    if (data && data.success && data.logs) {
         renderConsoleLogs(data.logs);
     } else {
-        consoleLogs.innerHTML = '<p class="empty-state">Konsol logları alınamadı. Unity bağlı olmayabilir.</p>';
+        let errMsg = '';
+        if (data) {
+            if (data.error) errMsg = ` (Hata: ${data.error})`;
+            else errMsg = ` (Yanıt formatı geçersiz)`;
+        } else {
+            errMsg = ' (Sunucudan yanıt alınamadı)';
+        }
+        consoleLogs.innerHTML = `<p class="empty-state">Konsol logları alınamadı${errMsg}. Unity bağlı olmayabilir.</p>`;
     }
 }
 refreshConsoleBtn.addEventListener('click', refreshConsoleLogs);
@@ -229,10 +244,11 @@ function renderConsoleLogs(logs) {
         row.appendChild(meta);
         row.appendChild(msg);
 
-        if (log.stack_trace && (log.type === 'Error' || log.type === 'Exception' || log.type === 'Assert')) {
+        const stackTrace = log.stackTrace || log.stack_trace;
+        if (stackTrace && (log.type === 'Error' || log.type === 'Exception' || log.type === 'Assert')) {
             const stack = document.createElement('pre');
             stack.className = 'log-stack';
-            stack.textContent = log.stack_trace;
+            stack.textContent = stackTrace;
             row.appendChild(stack);
         }
 
