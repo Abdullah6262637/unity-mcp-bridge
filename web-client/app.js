@@ -1035,6 +1035,57 @@ chatInput.addEventListener('keydown', (e) => {
     }
 });
 
+let activeTicker = null;
+
+function startStatusTicker(type) {
+    if (activeTicker) {
+        activeTicker.stop();
+    }
+    
+    const planStatuses = [
+        "🔍 Unity projesi taranıyor...",
+        "🌳 Sahne hiyerarşisi inceleniyor...",
+        "📂 Proje asset dosyaları listeleniyor...",
+        "📝 C# script kod yapıları analiz ediliyor...",
+        "📐 Değişiklik yapılacak alanlar tespit ediliyor...",
+        "📋 Adım adım detaylı plan şablonu hazırlanıyor..."
+    ];
+    
+    const buildStatuses = [
+        "⚡ Değişiklikler Unity editörüne gönderiliyor...",
+        "🛠️ Sahne nesneleri güncelleniyor...",
+        "📟 C# derleme ve kod durumu izleniyor...",
+        "🌳 Değişiklikler canlı sahneyle doğrulanıyor...",
+        "📸 Canlı ekran görüntüsü analiz ediliyor...",
+        "📊 Yapılan işlemler kontrol ediliyor...",
+        "📋 Sonuç raporu derleniyor..."
+    ];
+    
+    const statuses = type === 'plan' ? planStatuses : buildStatuses;
+    let idx = 0;
+    
+    // Append the initial message
+    const bubble = appendMessage('assistant', statuses[0]);
+    bubble.classList.add('status-ticker');
+    
+    const intervalId = setInterval(() => {
+        idx = (idx + 1) % statuses.length;
+        bubble.innerHTML = statuses[idx];
+    }, 1500);
+    
+    activeTicker = {
+        stop: () => {
+            clearInterval(intervalId);
+            // Remove the ticker message row from the feed
+            const row = bubble.closest('.message-row');
+            if (row) row.remove();
+            activeTicker = null;
+        }
+    };
+    
+    return activeTicker;
+}
+
 async function handleSendMessage() {
     const text = chatInput.value.trim();
     if (!text || isChatActive) return;
@@ -1060,6 +1111,7 @@ async function handleSendMessage() {
             window.electronAPI.logToTerminal('error', `Sohbet İşlem Hatası: ${error.message}`);
         }
     } finally {
+        if (activeTicker) activeTicker.stop();
         isChatActive = false;
         sendBtn.disabled = false;
         
@@ -1076,7 +1128,7 @@ async function runPlanProcess() {
     let loopCount = 0;
     const maxLoops = 6; // Limit loops for planning to avoid infinite tool calls
 
-    appendMessage('assistant', 'Proje yapısı inceleniyor ve plan hazırlanıyor...');
+    startStatusTicker('plan');
 
     while (continueLoop && loopCount < maxLoops) {
         loopCount++;
@@ -1090,15 +1142,8 @@ async function runPlanProcess() {
         const choice = result.choices[0];
         const msg = choice.message;
 
-        // Clean up status messages
-        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Proje yapısı inceleniyor')) {
-            chatFeed.lastElementChild.remove();
-        }
-        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Plan analiz ediliyor...')) {
-            chatFeed.lastElementChild.remove();
-        }
-
         if (msg.content) {
+            if (activeTicker) activeTicker.stop(); // Stop ticker to print content
             appendMessage('assistant', msg.content);
             messageHistory.push({ role: 'assistant', content: msg.content });
         }
@@ -1131,12 +1176,13 @@ async function runPlanProcess() {
             }
 
             messageHistory.push(...toolResponses);
-            appendMessage('assistant', 'Plan analiz ediliyor...');
+            startStatusTicker('plan'); // Resume ticker for next turn analysis
         } else {
             continueLoop = false;
         }
     }
 
+    if (activeTicker) activeTicker.stop();
     appendPlanConfirmPanel();
 }
 
@@ -1145,7 +1191,7 @@ async function runBuildProcess() {
     let loopCount = 0;
     const maxLoops = 10;
 
-    appendMessage('assistant', 'İşlem yapılıyor...');
+    startStatusTicker('build');
 
     while (continueLoop && loopCount < maxLoops) {
         loopCount++;
@@ -1159,14 +1205,8 @@ async function runBuildProcess() {
         const choice = result.choices[0];
         const msg = choice.message;
 
-        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('İşlem yapılıyor...')) {
-            chatFeed.lastElementChild.remove();
-        }
-        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Sonuçlar analiz ediliyor...')) {
-            chatFeed.lastElementChild.remove();
-        }
-
         if (msg.content) {
+            if (activeTicker) activeTicker.stop(); // Stop ticker to print content
             appendMessage('assistant', msg.content);
             messageHistory.push({ role: 'assistant', content: msg.content });
         }
@@ -1196,9 +1236,11 @@ async function runBuildProcess() {
             }
 
             messageHistory.push(...toolResponses);
-            appendMessage('assistant', 'Sonuçlar analiz ediliyor...');
+            startStatusTicker('build'); // Resume ticker for next turn execution
         } else {
             continueLoop = false;
         }
     }
+    
+    if (activeTicker) activeTicker.stop();
 }
