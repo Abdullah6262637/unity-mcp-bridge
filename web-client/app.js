@@ -54,6 +54,7 @@ const captureGameBtn = document.getElementById('captureGameBtn');
 // --- Navigation Tabs Bindings ---
 const tabs = [
     { btn: tabHierarchyBtn, screen: hierarchyScreen, name: 'hierarchy' },
+    { btn: document.getElementById('tabAssetsBtn'), screen: document.getElementById('assetsScreen'), name: 'assets' },
     { btn: tabConsoleBtn, screen: consoleScreen, name: 'console' },
     { btn: tabCameraBtn, screen: cameraScreen, name: 'camera' }
 ];
@@ -70,6 +71,7 @@ tabs.forEach(t => {
         
         // Immediate update on tab activate
         if (t.name === 'hierarchy') refreshHierarchy();
+        if (t.name === 'assets') refreshAssets();
         if (t.name === 'console') refreshConsoleLogs();
     });
 });
@@ -276,6 +278,124 @@ async function captureScreenshot(viewType) {
 captureSceneBtn.addEventListener('click', () => captureScreenshot('scene'));
 captureGameBtn.addEventListener('click', () => captureScreenshot('game'));
 
+// --- Asset Browser Implementation ---
+let allAssetsCached = [];
+
+async function refreshAssets() {
+    const assetsList = document.getElementById('assetsList');
+    assetsList.innerHTML = '<p class="empty-state">Assetler güncelleniyor...</p>';
+    
+    const filterInput = document.getElementById('assetsSearchInput');
+    const filterVal = filterInput ? filterInput.value.trim() : '';
+    
+    const data = await executeUnityTool('list_assets', { folder_path: 'Assets', filter: filterVal });
+    if (data && data.success && data.assets) {
+        allAssetsCached = data.assets;
+        renderAssets(data.assets);
+    } else {
+        let errMsg = '';
+        if (data) {
+            if (data.error) errMsg = ` (Hata: ${data.error})`;
+            else errMsg = ` (Yanıt formatı geçersiz)`;
+        } else {
+            errMsg = ' (Sunucudan yanıt alınamadı)';
+        }
+        assetsList.innerHTML = `<p class="empty-state">Assetler alınamadı${errMsg}. Unity bağlı olmayabilir.</p>`;
+    }
+}
+
+function getAssetIconAndType(path) {
+    const ext = path.split('.').pop().toLowerCase();
+    let iconSvg = '';
+    let typeLabel = ext;
+    
+    if (ext === 'cs') {
+        iconSvg = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><line x1="10" y1="9" x2="9" y2="9"></line></svg>`;
+        typeLabel = 'C# Script';
+    } else if (ext === 'prefab') {
+        iconSvg = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>`;
+        typeLabel = 'Prefab';
+    } else if (ext === 'unity') {
+        iconSvg = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+        typeLabel = 'Scene';
+    } else if (ext === 'mat') {
+        iconSvg = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>`;
+        typeLabel = 'Material';
+    } else if (['png', 'jpg', 'jpeg', 'tga', 'psd'].includes(ext)) {
+        iconSvg = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+        typeLabel = 'Texture';
+    } else {
+        iconSvg = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>`;
+        typeLabel = ext || 'Asset';
+    }
+    
+    return { iconSvg, typeLabel };
+}
+
+function renderAssets(assets) {
+    const assetsList = document.getElementById('assetsList');
+    assetsList.innerHTML = '';
+    if (!assets || assets.length === 0) {
+        assetsList.innerHTML = '<p class="empty-state">Hiçbir asset dosyası bulunamadı.</p>';
+        return;
+    }
+    
+    assets.forEach(assetPath => {
+        const row = document.createElement('div');
+        row.className = 'asset-row';
+        
+        const { iconSvg, typeLabel } = getAssetIconAndType(assetPath);
+        
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'asset-icon';
+        iconSpan.innerHTML = iconSvg;
+        
+        const pathSpan = document.createElement('span');
+        pathSpan.className = 'asset-path';
+        pathSpan.textContent = assetPath;
+        pathSpan.title = assetPath;
+        
+        const typeSpan = document.createElement('span');
+        typeSpan.className = 'asset-type';
+        typeSpan.textContent = typeLabel;
+        
+        row.appendChild(iconSpan);
+        row.appendChild(pathSpan);
+        row.appendChild(typeSpan);
+        
+        // Fast click-to-input binding
+        row.addEventListener('click', () => {
+            chatInput.value += ` "${assetPath}"`;
+            chatInput.style.height = 'auto';
+            chatInput.style.height = (chatInput.scrollHeight) + 'px';
+            chatInput.focus();
+        });
+        
+        assetsList.appendChild(row);
+    });
+}
+
+document.getElementById('refreshAssetsBtn').addEventListener('click', refreshAssets);
+
+const assetsSearchInput = document.getElementById('assetsSearchInput');
+if (assetsSearchInput) {
+    assetsSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            refreshAssets();
+        }
+    });
+
+    assetsSearchInput.addEventListener('input', () => {
+        const query = assetsSearchInput.value.trim().toLowerCase();
+        if (query === '') {
+            renderAssets(allAssetsCached);
+        } else {
+            const filtered = allAssetsCached.filter(p => p.toLowerCase().includes(query));
+            renderAssets(filtered);
+        }
+    });
+}
+
 // --- Connection Polling & Auto Refresh ---
 async function checkUnityConnection() {
     try {
@@ -287,6 +407,7 @@ async function checkUnityConnection() {
             
             // Auto refresh active tab dynamically
             if (activeDashboardTab === 'hierarchy') refreshHierarchy();
+            if (activeDashboardTab === 'assets') refreshAssets();
             if (activeDashboardTab === 'console') refreshConsoleLogs();
         } else {
             throw new Error();

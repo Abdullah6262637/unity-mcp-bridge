@@ -888,3 +888,80 @@ body {
 .message-row.assistant .bubble {
     border-bottom-left-radius: 4px !important;
 }
+
+
+/* --- Asset Browser Tab Styles --- */
+.assets-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.assets-search {
+    background: var(--bg-canvas) !important;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 4px 10px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    width: 200px;
+    height: 28px;
+    transition: border-color 0.15s;
+}
+
+.assets-search:focus {
+    border-color: #ffffff;
+}
+
+.assets-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--bg-canvas);
+}
+
+.asset-row {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.1s;
+    font-size: 14px;
+}
+
+.asset-row:hover {
+    background: var(--bg-surface-hover);
+}
+
+.asset-icon {
+    margin-right: 8px;
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+}
+
+.asset-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.asset-path {
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80%;
+}
+
+.asset-type {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: auto;
+    text-transform: uppercase;
+    font-weight: 700;
+}
