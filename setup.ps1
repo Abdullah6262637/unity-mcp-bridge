@@ -34,7 +34,7 @@ $claudeConfigDir = "$env:APPDATA\Claude"
 $claudeConfigPath = "$claudeConfigDir\claude_desktop_config.json"
 $backupConfigPath = "$claudeConfigDir\claude_desktop_config.json.bak"
 
-$serverPath = "C:/Users/HP/Desktop/mcp-bridge/mcp-server/dist/index.js"
+$serverPath = (Join-Path $PSScriptRoot "mcp-server/dist/index.js").Replace('\', '/')
 
 # Create Claude config directory if it doesn't exist
 if (-not (Test-Path $claudeConfigDir)) {
