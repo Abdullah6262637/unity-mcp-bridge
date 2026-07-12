@@ -19,13 +19,16 @@ def kill_process(proc):
 def main():
     print("[Desktop Boot] Starting Unity AI Desktop Workspace...")
     
-    # 1. Compile Node.js MCP server
-    print("[Desktop Boot] Verifying Node server compilation...")
-    try:
-        subprocess.run(["npm", "run", "build"], cwd="mcp-server", shell=True, check=True)
-    except Exception as e:
-        print(f"[Error] Failed to build MCP server: {e}")
-        sys.exit(1)
+    # 1. Compile Node.js MCP server (only if not already compiled)
+    if not os.path.exists(os.path.join("mcp-server", "dist", "index.js")):
+        print("[Desktop Boot] Compiling TypeScript server...")
+        try:
+            subprocess.run(["npm", "run", "build"], cwd="mcp-server", shell=True, check=True)
+        except Exception as e:
+            print(f"[Error] Failed to build MCP server: {e}")
+            sys.exit(1)
+    else:
+        print("[Desktop Boot] Server already compiled. Skipping compilation...")
 
     # 2. Launch the MCP Inspector (which handles starting the Node server internally)
     print("[Desktop Boot] Starting MCP Inspector proxy...")

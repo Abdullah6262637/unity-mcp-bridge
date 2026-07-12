@@ -3,10 +3,14 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "`n[Desktop Boot] Starting Unity AI Desktop Workspace..." -ForegroundColor Cyan
 
-# 1. Build C# / TS Server
-Write-Host "[Desktop Boot] Verifying Node server compilation..."
-Set-Location -Path "$PSScriptRoot\mcp-server"
-& npm run build
+# 1. Build C# / TS Server (Only if not already compiled)
+if (-not (Test-Path "$PSScriptRoot\mcp-server\dist\index.js")) {
+    Write-Host "[Desktop Boot] Compiling TypeScript server..."
+    Set-Location -Path "$PSScriptRoot\mcp-server"
+    & npm run build
+} else {
+    Write-Host "[Desktop Boot] Server already compiled. Skipping compilation..."
+}
 
 # 2. Launch MCP Inspector in background
 Write-Host "[Desktop Boot] Starting MCP Inspector proxy..."
