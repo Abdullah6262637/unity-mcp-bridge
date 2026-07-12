@@ -48,7 +48,41 @@ namespace UnityMCPBridge
                 }
             }
 
-            GameObject go = new GameObject(args.name);
+            GameObject go = null;
+            string nameLower = args.name.ToLower();
+
+            // Auto-instantiate primitives based on name keywords to avoid blank empty GameObjects
+            if (nameLower.Contains("cube") || nameLower.Contains("küp"))
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            }
+            else if (nameLower.Contains("sphere") || nameLower.Contains("küre"))
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            }
+            else if (nameLower.Contains("cylinder") || nameLower.Contains("silindir"))
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            }
+            else if (nameLower.Contains("capsule") || nameLower.Contains("kapsül"))
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            }
+            else if (nameLower.Contains("plane") || nameLower.Contains("zemin"))
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            }
+            else if (nameLower.Contains("quad"))
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            }
+            else
+            {
+                go = new GameObject(args.name);
+            }
+
+            go.name = args.name;
+
             if (parent != null)
             {
                 go.transform.SetParent(parent.transform, false);
@@ -177,8 +211,16 @@ namespace UnityMCPBridge
             }
             string childJson = "[" + string.Join(",", childrenJson) + "]";
 
+            Vector3 pos = go.transform.position;
+            Vector3 rot = go.transform.eulerAngles;
+            Vector3 scale = go.transform.localScale;
+
+            string transformJson = $"{{\"position\":[{pos.x.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},{pos.y.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},{pos.z.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}]," +
+                                   $"\"rotation\":[{rot.x.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},{rot.y.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},{rot.z.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}]," +
+                                   $"\"scale\":[{scale.x.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},{scale.y.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)},{scale.z.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}]}}";
+
             string escapedName = MCPToolRegistry.EscapeJson(go.name);
-            return $"{{\"name\":\"{escapedName}\",\"path\":\"{MCPToolRegistry.EscapeJson(path)}\",\"instanceId\":{go.GetInstanceID()},\"active\":{go.activeSelf.ToString().ToLower()},\"components\":{compJson},\"children\":{childJson}}}";
+            return $"{{\"name\":\"{escapedName}\",\"path\":\"{MCPToolRegistry.EscapeJson(path)}\",\"instanceId\":{go.GetInstanceID()},\"active\":{go.activeSelf.ToString().ToLower()},\"transform\":{transformJson},\"components\":{compJson},\"children\":{childJson}}}";
         }
     }
 }

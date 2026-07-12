@@ -1140,6 +1140,12 @@ async function handleSendMessage() {
         // Prune intermediate tool details to save LLM context window space and avoid limit failures
         messageHistory = messageHistory.filter(msg => msg.role === 'user' || (msg.role === 'assistant' && msg.content));
 
+        // Keep only the last 14 messages (approx. 7 turns) to prevent 400 Bad Request Context Limit Exceeded errors
+        const MAX_HISTORY = 14;
+        if (messageHistory.length > MAX_HISTORY) {
+            messageHistory = messageHistory.slice(messageHistory.length - MAX_HISTORY);
+        }
+
         // Auto refresh hierarchy after tools execution loop ends
         setTimeout(refreshHierarchy, 1000);
     }
