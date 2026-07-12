@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity MCP AI Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <span class="logo-icon">🎮</span>
+                <h1 class="logo-text">Unity MCP AI</h1>
+            </div>
+
+            <!-- Mode Toggle pill button -->
+            <div class="mode-toggle-container">
+                <button id="planModeBtn" class="mode-btn plan active">
+                    🔮 Plan Modu
+                </button>
+                <button id="buildModeBtn" class="mode-btn build">
+                    🛠️ Build Modu
+                </button>
+            </div>
+
+            <!-- Configuration panel -->
+            <div class="settings-box">
+                <h3>API Ayarları</h3>
+                
+                <div class="input-group">
+                    <label for="endpointInput">Base URL (Endpoint)</label>
+                    <input type="text" id="endpointInput" value="https://ytdlp.kodyazar.com/v1">
+                </div>
+
+                <div class="input-group">
+                    <label for="apiKeyInput">API Key</label>
+                    <input type="password" id="apiKeyInput" value="my-super-secret-password-123">
+                </div>
+
+                <div class="input-group">
+                    <label for="modelSelect">Model</label>
+                    <select id="modelSelect">
+                        <option value="claude-sonnet-4.5">claude-sonnet-4.5</option>
+                        <option value="minimax-m2.5">minimax-m2.5</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Unity Status indicator -->
+            <div class="status-panel">
+                <div id="statusDot" class="status-dot"></div>
+                <span id="statusText" class="status-text">Unity Bağlantısı Aranıyor...</span>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-section">
+            <header class="chat-header">
+                <div class="chat-header-info">
+                    <h2>AI Assistant Sohbeti</h2>
+                    <p>Unity Projenizi doğal dil ile yönetin ve kodlayın</p>
+                </div>
+                <div id="modeBadge" class="current-mode-badge plan">Plan Modu Aktif</div>
+            </header>
+
+            <!-- Chat Feed -->
+            <div id="chatFeed" class="chat-feed">
+                <div class="message-row assistant">
+                    <div class="bubble">
+                        <p>Merhaba! Ben senin Unity AI geliştirme asistanınım. Yapay zeka ile Unity projenizi kontrol edebilir, oyun nesneleri oluşturabilir ve kod yazabilirim.</p>
+                        <p>Şu anda **Plan Modu**'ndayım. Bana ne yapmak istediğinizi söyleyin, önce ayrıntılı bir plan hazırlayayım!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input area -->
+            <div class="input-area">
+                <textarea id="chatInput" class="chat-input" placeholder="Unity'de ne yapmak istersin? (örn: Sahneye kırmızı bir küp ekle)" rows="1"></textarea>
+                <button id="sendBtn" class="send-btn" aria-label="Gönder">🚀</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Core App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
