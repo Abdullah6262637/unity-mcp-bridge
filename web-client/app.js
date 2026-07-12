@@ -1,7 +1,7 @@
 // Unity MCP Bridge Web Client
 
 // Default connection settings
-const UNITY_URL = 'http://localhost:8090';
+const UNITY_URL = 'http://127.0.0.1:8090';
 
 // Mode States
 let currentMode = 'plan'; // 'plan' or 'build'
