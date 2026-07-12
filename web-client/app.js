@@ -78,6 +78,14 @@ tabs.forEach(t => {
 });
 
 // --- Settings Drawer Bindings ---
+const deepThinkingToggle = document.getElementById('deepThinkingToggle');
+if (deepThinkingToggle) {
+    deepThinkingToggle.checked = localStorage.getItem('deep_thinking_enabled') === 'true';
+    deepThinkingToggle.addEventListener('change', () => {
+        localStorage.setItem('deep_thinking_enabled', deepThinkingToggle.checked);
+    });
+}
+
 toggleSettingsBtn.addEventListener('click', () => {
     settingsDrawer.classList.toggle('open');
 });
@@ -863,23 +871,65 @@ Execute the approved plan using the available Unity tools.
 You have access to tools to modify the scene, write scripts, build prefabs, run tests, and capture screenshots.
 Always call the tools to execute changes, and verify success.`;
 
-// --- UI Helpers ---
-function appendMessage(role, text) {
+function appendMessage(role, text, reasoningText = '', durationSeconds = 0) {
     const row = document.createElement('div');
     row.className = `message-row ${role}`;
     
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     
-    let formattedText = text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-        .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
+    let finalReasoning = reasoningText || '';
+    let resultContent = text || '';
+    
+    if (!finalReasoning && text) {
+        const thinkRegex = /<think>([\s\S]*?)<\/think>/i;
+        const match = text.match(thinkRegex);
+        if (match) {
+            finalReasoning = match[1].trim();
+            resultContent = text.replace(thinkRegex, '').trim();
+        }
+    }
+    
+    const formatHTML = (input) => {
+        if (!input) return '';
+        return input
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+            .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+    };
+    
+    if (finalReasoning) {
+        const accordion = document.createElement('div');
+        accordion.className = 'thinking-accordion';
         
-    bubble.innerHTML = formattedText;
+        const header = document.createElement('div');
+        header.className = 'thinking-accordion-header';
+        
+        const durationText = durationSeconds > 0 ? ` (${durationSeconds} saniye sürdü)` : '';
+        header.innerHTML = `<span>🧠 DÜŞÜNME SÜRECİ${durationText}</span><span class="chevron">▼</span>`;
+        
+        const body = document.createElement('div');
+        body.className = 'thinking-accordion-body';
+        body.innerHTML = formatHTML(finalReasoning);
+        
+        accordion.appendChild(header);
+        accordion.appendChild(body);
+        
+        header.addEventListener('click', () => {
+            accordion.classList.toggle('open');
+        });
+        
+        bubble.appendChild(accordion);
+    }
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.innerHTML = formatHTML(resultContent);
+    bubble.appendChild(contentDiv);
+    
     row.appendChild(bubble);
     chatFeed.appendChild(row);
     chatFeed.scrollTop = chatFeed.scrollHeight;
@@ -1038,10 +1088,14 @@ chatInput.addEventListener('keydown', (e) => {
 let activeStatusBubble = null;
 
 function setStatusMessage(message) {
+    let prefix = '';
+    if (message.includes("Yapay zeka") || message.includes("arıyoruz") || message.includes("bekleniyor")) {
+        prefix = '<span class="thinking-pulse"></span>';
+    }
     if (activeStatusBubble) {
-        activeStatusBubble.innerHTML = message;
+        activeStatusBubble.innerHTML = `${prefix}${message}`;
     } else {
-        activeStatusBubble = appendMessage('assistant', message);
+        activeStatusBubble = appendMessage('assistant', `${prefix}${message}`);
         activeStatusBubble.classList.add('status-ticker');
     }
 }
@@ -1101,19 +1155,26 @@ async function runPlanProcess() {
     while (continueLoop && loopCount < maxLoops) {
         loopCount++;
         
+        let systemPrompt = PLAN_SYSTEM_PROMPT;
+        if (deepThinkingToggle && deepThinkingToggle.checked) {
+            systemPrompt += "\n\nÖNEMLİ: Cevap vermeden önce detaylı ve aşamalı düşünme sürecini mutlaka <think>...</think> etiketleri arasında yaz.";
+        }
+
         const apiMessages = [
-            { role: 'system', content: PLAN_SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             ...messageHistory
         ];
 
         setStatusMessage("🤖 Yapay zeka yanıt/plan taslağı hazırlıyor...");
+        const startTime = Date.now();
         const result = await callLLM(apiMessages, true);
+        const durationSeconds = Math.round((Date.now() - startTime) / 1000);
         const choice = result.choices[0];
         const msg = choice.message;
 
         if (msg.content) {
             clearStatusMessage();
-            appendMessage('assistant', msg.content);
+            appendMessage('assistant', msg.content, msg.reasoning_content || '', durationSeconds);
             messageHistory.push({ role: 'assistant', content: msg.content });
             if (hasExecutedTools) {
                 hasSentTextMessageAfterTools = true;
@@ -1182,19 +1243,26 @@ async function runBuildProcess() {
     while (continueLoop && loopCount < maxLoops) {
         loopCount++;
         
+        let systemPrompt = BUILD_SYSTEM_PROMPT;
+        if (deepThinkingToggle && deepThinkingToggle.checked) {
+            systemPrompt += "\n\nÖNEMLİ: Cevap vermeden önce detaylı ve aşamalı düşünme sürecini mutlaka <think>...</think> etiketleri arasında yaz.";
+        }
+
         const apiMessages = [
-            { role: 'system', content: BUILD_SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             ...messageHistory
         ];
 
         setStatusMessage("🤖 Yapay zeka kodu yazıyor ve sahneyi güncelliyor...");
+        const startTime = Date.now();
         const result = await callLLM(apiMessages, true);
+        const durationSeconds = Math.round((Date.now() - startTime) / 1000);
         const choice = result.choices[0];
         const msg = choice.message;
 
         if (msg.content) {
             clearStatusMessage();
-            appendMessage('assistant', msg.content);
+            appendMessage('assistant', msg.content, msg.reasoning_content || '', durationSeconds);
             messageHistory.push({ role: 'assistant', content: msg.content });
             if (hasExecutedTools) {
                 hasSentTextMessageAfterTools = true;
