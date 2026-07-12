@@ -11,6 +11,7 @@ let messageHistory = [];
 // DOM Elements
 const planModeBtn = document.getElementById('planModeBtn');
 const buildModeBtn = document.getElementById('buildModeBtn');
+const clearChatBtn = document.getElementById('clearChatBtn');
 const endpointInput = document.getElementById('endpointInput');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const modelSelect = document.getElementById('modelSelect');
@@ -21,19 +22,19 @@ const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
 const modeBadge = document.getElementById('modeBadge');
 
-// List of all Unity MCP Tools with OpenAI-compatible schemas
+// List of all Unity MCP Tools (Highly optimized to minimize token context size)
 const TOOLS = [
     {
         type: 'function',
         function: {
             name: 'create_gameobject',
-            description: 'Creates a new GameObject in the active Unity scene hierarchy.',
+            description: 'Creates a GameObject.',
             parameters: {
                 type: 'object',
                 properties: {
-                    name: { type: 'string', description: 'The name of the GameObject.' },
-                    position: { type: 'array', items: { type: 'number' }, description: 'Optional position as [x, y, z] array.' },
-                    parent_path: { type: 'string', description: 'Optional path of parent GameObject (e.g., /Parent).' }
+                    name: { type: 'string', description: 'Name of object.' },
+                    position: { type: 'array', items: { type: 'number' }, description: '[x,y,z]' },
+                    parent_path: { type: 'string', description: 'Parent path (optional).' }
                 },
                 required: ['name']
             }
@@ -43,12 +44,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'delete_gameobject',
-            description: 'Deletes a GameObject from the hierarchy. Requires confirm: true for safety.',
+            description: 'Deletes GameObject.',
             parameters: {
                 type: 'object',
                 properties: {
-                    path: { type: 'string', description: 'The exact path of the GameObject (e.g., /Parent/Child).' },
-                    confirm: { type: 'boolean', description: 'Set to true to verify this destructive action.' }
+                    path: { type: 'string', description: 'Path (e.g. /Cube).' },
+                    confirm: { type: 'boolean', description: 'Must be true.' }
                 },
                 required: ['path', 'confirm']
             }
@@ -58,7 +59,7 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'get_scene_hierarchy',
-            description: 'Retrieves the complete active scene hierarchy including GameObjects, active states, paths, and components.',
+            description: 'Gets scene hierarchy.',
             parameters: { type: 'object', properties: {} }
         }
     },
@@ -66,12 +67,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'add_component',
-            description: 'Adds a component (e.g., Rigidbody, Camera, or custom scripts) to a GameObject.',
+            description: 'Adds component.',
             parameters: {
                 type: 'object',
                 properties: {
-                    gameobject_path: { type: 'string', description: 'The path of the target GameObject.' },
-                    component_type: { type: 'string', description: 'The class name of the component (e.g., Rigidbody).' }
+                    gameobject_path: { type: 'string' },
+                    component_type: { type: 'string', description: 'Class (e.g. Rigidbody).' }
                 },
                 required: ['gameobject_path', 'component_type']
             }
@@ -81,12 +82,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'remove_component',
-            description: 'Removes a component from a GameObject.',
+            description: 'Removes component.',
             parameters: {
                 type: 'object',
                 properties: {
-                    gameobject_path: { type: 'string', description: 'The path of the target GameObject.' },
-                    component_type: { type: 'string', description: 'The class name of the component to remove.' }
+                    gameobject_path: { type: 'string' },
+                    component_type: { type: 'string' }
                 },
                 required: ['gameobject_path', 'component_type']
             }
@@ -96,14 +97,14 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'set_component_property',
-            description: 'Sets a public field or property value on a component using reflection.',
+            description: 'Sets property on component.',
             parameters: {
                 type: 'object',
                 properties: {
-                    gameobject_path: { type: 'string', description: 'The path of the GameObject.' },
-                    component_type: { type: 'string', description: 'The class name of the component.' },
-                    property: { type: 'string', description: 'The property or field name (case-insensitive).' },
-                    value: { type: 'string', description: 'The value to assign as string (e.g., "10", "true", "[0, 5, 0]").' }
+                    gameobject_path: { type: 'string' },
+                    component_type: { type: 'string' },
+                    property: { type: 'string' },
+                    value: { type: 'string', description: 'Value (e.g. "5", "true", "[0,1,0]").' }
                 },
                 required: ['gameobject_path', 'component_type', 'property', 'value']
             }
@@ -113,11 +114,11 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'read_script',
-            description: 'Reads the code of a C# script file in the project.',
+            description: 'Reads C# script file.',
             parameters: {
                 type: 'object',
                 properties: {
-                    asset_path: { type: 'string', description: 'Relative path under Assets/ (e.g., Assets/Scripts/Player.cs).' }
+                    asset_path: { type: 'string', description: 'e.g. Assets/Player.cs' }
                 },
                 required: ['asset_path']
             }
@@ -127,12 +128,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'write_script',
-            description: 'Overwrites a C# script file or writes a new one and triggers compilation.',
+            description: 'Writes C# script.',
             parameters: {
                 type: 'object',
                 properties: {
-                    asset_path: { type: 'string', description: 'Relative path under Assets/.' },
-                    content: { type: 'string', description: 'Complete file contents.' }
+                    asset_path: { type: 'string' },
+                    content: { type: 'string', description: 'Complete file code.' }
                 },
                 required: ['asset_path', 'content']
             }
@@ -142,12 +143,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'create_script',
-            description: 'Creates a new C# MonoBehaviour script with standard template.',
+            description: 'Creates C# script.',
             parameters: {
                 type: 'object',
                 properties: {
-                    asset_path: { type: 'string', description: 'Relative path under Assets/ ending in .cs.' },
-                    template: { type: 'string', description: 'Optional custom class body.' }
+                    asset_path: { type: 'string' },
+                    template: { type: 'string' }
                 },
                 required: ['asset_path']
             }
@@ -157,7 +158,7 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'get_compile_status',
-            description: 'Queries project compilation status, errors, and warnings.',
+            description: 'Gets C# compiler errors.',
             parameters: { type: 'object', properties: {} }
         }
     },
@@ -165,12 +166,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'get_console_logs',
-            description: 'Fetches recent Unity Editor console logs.',
+            description: 'Gets Editor console logs.',
             parameters: {
                 type: 'object',
                 properties: {
-                    count: { type: 'number', description: 'Max logs to fetch (default: 50).' },
-                    log_type: { type: 'string', enum: ['Log', 'Warning', 'Error', 'Assert', 'Exception'], description: 'Filter type.' }
+                    count: { type: 'number' },
+                    log_type: { type: 'string', enum: ['Log', 'Warning', 'Error', 'Assert', 'Exception'] }
                 }
             }
         }
@@ -179,12 +180,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'run_tests',
-            description: 'Triggers Unity Test Runner execution.',
+            description: 'Runs NUnit tests.',
             parameters: {
                 type: 'object',
                 properties: {
-                    test_mode: { type: 'string', enum: ['EditMode', 'PlayMode'], description: 'Test suite type.' },
-                    filter: { type: 'string', description: 'Optional test name filter.' }
+                    test_mode: { type: 'string', enum: ['EditMode', 'PlayMode'] },
+                    filter: { type: 'string' }
                 }
             }
         }
@@ -193,12 +194,10 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'get_test_status',
-            description: 'Queries status of NUnit test job.',
+            description: 'Gets status of running tests.',
             parameters: {
                 type: 'object',
-                properties: {
-                    job_id: { type: 'string', description: 'The job ID.' }
-                },
+                properties: { job_id: { type: 'string' } },
                 required: ['job_id']
             }
         }
@@ -207,12 +206,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'create_prefab',
-            description: 'Converts a hierarchy GameObject into a Prefab asset.',
+            description: 'Saves GameObject to prefab.',
             parameters: {
                 type: 'object',
                 properties: {
-                    gameobject_path: { type: 'string', description: 'GameObject path.' },
-                    save_path: { type: 'string', description: 'Destination Asset path (e.g. Assets/MyPrefab.prefab).' }
+                    gameobject_path: { type: 'string' },
+                    save_path: { type: 'string', description: 'e.g. Assets/Prefab.prefab' }
                 },
                 required: ['gameobject_path', 'save_path']
             }
@@ -222,12 +221,12 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'list_assets',
-            description: 'Lists all assets in a specific project folder.',
+            description: 'Lists assets in folder.',
             parameters: {
                 type: 'object',
                 properties: {
-                    folder_path: { type: 'string', description: 'Path starting with Assets/.' },
-                    filter: { type: 'string', description: 'Search term or asset type.' }
+                    folder_path: { type: 'string' },
+                    filter: { type: 'string' }
                 }
             }
         }
@@ -236,7 +235,7 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'get_project_info',
-            description: 'Retrieves Unity project settings and version metadata.',
+            description: 'Gets project metadata.',
             parameters: { type: 'object', properties: {} }
         }
     },
@@ -244,12 +243,10 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'capture_game_view',
-            description: 'Captures a PNG screenshot from the main Game View camera.',
+            description: 'Takes Game View screenshot.',
             parameters: {
                 type: 'object',
-                properties: {
-                    quality: { type: 'string', enum: ['low', 'medium', 'high'] }
-                }
+                properties: { quality: { type: 'string', enum: ['low', 'medium', 'high'] } }
             }
         }
     },
@@ -257,12 +254,10 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'capture_scene_view',
-            description: 'Captures a PNG screenshot from the Editor Scene View camera.',
+            description: 'Takes Scene View screenshot.',
             parameters: {
                 type: 'object',
-                properties: {
-                    quality: { type: 'string', enum: ['low', 'medium', 'high'] }
-                }
+                properties: { quality: { type: 'string', enum: ['low', 'medium', 'high'] } }
             }
         }
     },
@@ -270,7 +265,7 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'capture_annotated_view',
-            description: 'Captures a screenshot with colored dots marking GameObject positions.',
+            description: 'Takes annotated screenshot.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -284,7 +279,7 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'enter_play_mode',
-            description: 'Enters Play Mode in the Unity Editor.',
+            description: 'Enters Play Mode.',
             parameters: { type: 'object', properties: {} }
         }
     },
@@ -292,7 +287,7 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'exit_play_mode',
-            description: 'Exits Play Mode in the Unity Editor.',
+            description: 'Exits Play Mode.',
             parameters: { type: 'object', properties: {} }
         }
     },
@@ -300,7 +295,7 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'pause_play_mode',
-            description: 'Pauses the execution of the game in Play Mode.',
+            description: 'Pauses game play.',
             parameters: { type: 'object', properties: {} }
         }
     },
@@ -308,7 +303,7 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'step_frame',
-            description: 'Steps the execution of the game by a single frame (requires game to be paused).',
+            description: 'Steps game frame.',
             parameters: { type: 'object', properties: {} }
         }
     },
@@ -316,13 +311,13 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'inspect_runtime_value',
-            description: 'Reads the live value of a public field or property on a component of a GameObject.',
+            description: 'Reads public member value.',
             parameters: {
                 type: 'object',
                 properties: {
-                    gameobject_path: { type: 'string', description: 'The hierarchy path of the GameObject.' },
-                    component_type: { type: 'string', description: 'The Component class name.' },
-                    member_name: { type: 'string', description: 'The public field or property to read.' }
+                    gameobject_path: { type: 'string' },
+                    component_type: { type: 'string' },
+                    member_name: { type: 'string' }
                 },
                 required: ['gameobject_path', 'component_type', 'member_name']
             }
@@ -332,14 +327,14 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'set_runtime_value',
-            description: 'Dynamically writes/assigns a new value to a public field or property on a component of a GameObject at runtime.',
+            description: 'Writes public member value.',
             parameters: {
                 type: 'object',
                 properties: {
-                    gameobject_path: { type: 'string', description: 'The hierarchy path of the GameObject.' },
-                    component_type: { type: 'string', description: 'The Component class name.' },
-                    member_name: { type: 'string', description: 'The public field or property to write.' },
-                    value: { type: 'string', description: 'The string value to assign.' }
+                    gameobject_path: { type: 'string' },
+                    component_type: { type: 'string' },
+                    member_name: { type: 'string' },
+                    value: { type: 'string' }
                 },
                 required: ['gameobject_path', 'component_type', 'member_name', 'value']
             }
@@ -349,16 +344,16 @@ const TOOLS = [
         type: 'function',
         function: {
             name: 'wait_for_condition',
-            description: 'Asynchronously polls a condition on a component property and returns once the comparison evaluates to true (or times out).',
+            description: 'Polls C# condition.',
             parameters: {
                 type: 'object',
                 properties: {
-                    gameobject_path: { type: 'string', description: 'The hierarchy path of the GameObject to watch.' },
-                    component_type: { type: 'string', description: 'The Component class name to check.' },
-                    member_name: { type: 'string', description: 'The public field or property name to evaluate.' },
+                    gameobject_path: { type: 'string' },
+                    component_type: { type: 'string' },
+                    member_name: { type: 'string' },
                     op: { type: 'string', enum: ['==', '!=', '<', '>', '<=', '>='] },
-                    value: { type: 'string', description: 'The target value to compare against.' },
-                    timeout_ms: { type: 'number', description: 'Timeout in ms (default: 5000).' }
+                    value: { type: 'string' },
+                    timeout_ms: { type: 'number' }
                 },
                 required: ['gameobject_path', 'component_type', 'member_name', 'op', 'value']
             }
@@ -366,18 +361,18 @@ const TOOLS = [
     }
 ];
 
-// System Prompts for Modes
-const PLAN_SYSTEM_PROMPT = `You are a Unity AI Development Assistant running in PLAN MODE.
-Your goal is to analyze the user's request, gather any context if needed, and design a detailed, comprehensive implementation plan.
+// System Prompts
+const PLAN_SYSTEM_PROMPT = `You are a Unity AI Givelopment Assistant running in PLAN MODE.
+Analyze the user request, inspect the project, and present a detailed implementation plan.
 Provide a clear markdown checklist of tasks that need to be accomplished.
-DO NOT execute or suggest calling any tools in this mode. Simply explain the plan and wait for the user's approval.`;
+DO NOT execute or suggest calling any tools in this mode. Only explain the plan and wait for approval.`;
 
-const BUILD_SYSTEM_PROMPT = `You are a Unity AI Development Assistant running in BUILD MODE.
-Your goal is to execute the approved plan using the available Unity Editor tools.
-You have access to tools that can inspect the hierarchy, add components, read/write/create scripts, build prefabs, run tests, and capture screenshots.
-Always call the tools to execute changes, and then verify that they succeeded.`;
+const BUILD_SYSTEM_PROMPT = `You are a Unity AI Givelopment Assistant running in BUILD MODE.
+Execute the approved plan using the available Unity tools.
+You have access to tools to modify the scene, write scripts, build prefabs, run tests, and capture screenshots.
+Always call the tools to execute changes, and verify success.`;
 
-// Polling check for Unity Editor
+// Connection polling
 async function checkUnityConnection() {
     try {
         const res = await fetch(`${UNITY_URL}/health`, { method: 'GET' });
@@ -396,7 +391,7 @@ async function checkUnityConnection() {
 setInterval(checkUnityConnection, 3000);
 checkUnityConnection();
 
-// Mode switching handlers
+// Mode switches
 planModeBtn.addEventListener('click', () => {
     if (isChatActive) return;
     currentMode = 'plan';
@@ -415,13 +410,27 @@ buildModeBtn.addEventListener('click', () => {
     modeBadge.className = 'current-mode-badge build';
 });
 
-// Auto size text area
+// Clear Chat Action
+clearChatBtn.addEventListener('click', () => {
+    if (isChatActive) return;
+    messageHistory = [];
+    chatFeed.innerHTML = `
+        <div class="message-row assistant">
+            <div class="bubble">
+                <p>Sohbet geçmişi temizlendi! 🧹 Yeni bir çalışma başlatabilirsiniz.</p>
+                <p>Şu anda **${currentMode === 'plan' ? 'Plan' : 'Build'} Modu**'ndayım.</p>
+            </div>
+        </div>
+    `;
+});
+
+// Auto-size input box
 chatInput.addEventListener('input', () => {
     chatInput.style.height = 'auto';
     chatInput.style.height = (chatInput.scrollHeight) + 'px';
 });
 
-// Append message bubble to UI
+// UI helpers
 function appendMessage(role, text) {
     const row = document.createElement('div');
     row.className = `message-row ${role}`;
@@ -429,7 +438,6 @@ function appendMessage(role, text) {
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     
-    // Parse simple markdown-like code block highlights
     let formattedText = text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -445,7 +453,6 @@ function appendMessage(role, text) {
     return bubble;
 }
 
-// Append tool execution state to UI
 function appendToolBox(name, args) {
     const box = document.createElement('div');
     box.className = 'tool-execution-box';
@@ -476,7 +483,6 @@ function appendToolBox(name, args) {
     };
 }
 
-// Append Plan Confirmation panel
 function appendPlanConfirmPanel() {
     const box = document.createElement('div');
     box.className = 'plan-confirmation-box';
@@ -500,7 +506,6 @@ function appendPlanConfirmPanel() {
     });
 }
 
-// Direct local Unity tool execution
 async function executeUnityTool(name, args) {
     try {
         const response = await fetch(`${UNITY_URL}/tools/${name}`, {
@@ -508,18 +513,12 @@ async function executeUnityTool(name, args) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(args)
         });
-        
-        if (!response.ok) {
-            throw new Error(`Unity status: ${response.status}`);
-        }
-        
         return await response.json();
     } catch (err) {
         return { success: false, error: `Unity bağlantı hatası: ${err.message}` };
     }
 }
 
-// Call custom LLM Endpoint
 async function callLLM(apiMessages, useTools = false) {
     const endpoint = endpointInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
@@ -553,7 +552,6 @@ async function callLLM(apiMessages, useTools = false) {
     return await res.json();
 }
 
-// Chat Send Trigger
 sendBtn.addEventListener('click', handleSendMessage);
 chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -589,7 +587,6 @@ async function handleSendMessage() {
     }
 }
 
-// Plan execution loop
 async function runPlanProcess() {
     const apiMessages = [
         { role: 'system', content: PLAN_SYSTEM_PROMPT },
@@ -599,8 +596,9 @@ async function runPlanProcess() {
     appendMessage('assistant', 'Plan hazırlanıyor...');
     const result = await callLLM(apiMessages, false);
     
-    // Clear the "Plan hazırlanıyor..." placeholder message
-    chatFeed.lastElementChild.remove();
+    if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Plan hazırlanıyor...')) {
+        chatFeed.lastElementChild.remove();
+    }
 
     const text = result.choices[0].message.content;
     appendMessage('assistant', text);
@@ -609,11 +607,10 @@ async function runPlanProcess() {
     appendPlanConfirmPanel();
 }
 
-// Build execution loop with tool call handling
 async function runBuildProcess() {
     let continueLoop = true;
     let loopCount = 0;
-    const maxLoops = 10; // Protect against infinite recursion
+    const maxLoops = 10;
 
     appendMessage('assistant', 'İşlem yapılıyor...');
 
@@ -629,8 +626,10 @@ async function runBuildProcess() {
         const choice = result.choices[0];
         const msg = choice.message;
 
-        // Clear loading placeholder
         if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('İşlem yapılıyor...')) {
+            chatFeed.lastElementChild.remove();
+        }
+        if (chatFeed.lastElementChild && chatFeed.lastElementChild.textContent.includes('Sonuçlar analiz ediliyor...')) {
             chatFeed.lastElementChild.remove();
         }
 
@@ -640,7 +639,6 @@ async function runBuildProcess() {
         }
 
         if (msg.tool_calls && msg.tool_calls.length > 0) {
-            // Store assistant's tool intent in history
             messageHistory.push(msg);
 
             const toolResponses = [];
@@ -662,7 +660,6 @@ async function runBuildProcess() {
                 });
             }
 
-            // Feed tool results back
             messageHistory.push(...toolResponses);
             appendMessage('assistant', 'Sonuçlar analiz ediliyor...');
         } else {
