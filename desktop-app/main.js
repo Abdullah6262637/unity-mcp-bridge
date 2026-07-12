@@ -7,9 +7,11 @@ function createWindow() {
         height: 960,
         title: 'Unity AI Givelopment Studio',
         autoHideMenuBar: true,
+        frame: false, // Make window frameless
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js'), // Load preload bridge
             webSecurity: false // Disabled to allow the iframe to load localhost:6274 without security blocks
         }
     });
@@ -28,6 +30,28 @@ function createWindow() {
         `);
     });
 }
+
+// Window control IPC channels
+ipcMain.on('window-minimize', () => {
+    const win = BrowserWindow.getFocusedWindow();
+    if (win) win.minimize();
+});
+
+ipcMain.on('window-maximize', () => {
+    const win = BrowserWindow.getFocusedWindow();
+    if (win) {
+        if (win.isMaximized()) {
+            win.unmaximize();
+        } else {
+            win.maximize();
+        }
+    }
+});
+
+ipcMain.on('window-close', () => {
+    const win = BrowserWindow.getFocusedWindow();
+    if (win) win.close();
+});
 
 app.whenReady().then(() => {
     createWindow();

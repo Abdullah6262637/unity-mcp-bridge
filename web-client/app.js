@@ -9,6 +9,13 @@ let isChatActive = false;
 let messageHistory = [];
 let activeDashboardTab = 'hierarchy'; // 'hierarchy', 'console', 'camera'
 
+// --- Custom Titlebar Window Controls Binding ---
+if (window.electronAPI) {
+    document.getElementById('windowMinimizeBtn').addEventListener('click', () => window.electronAPI.minimize());
+    document.getElementById('windowMaximizeBtn').addEventListener('click', () => window.electronAPI.maximize());
+    document.getElementById('windowCloseBtn').addEventListener('click', () => window.electronAPI.close());
+}
+
 // DOM Elements - Chat & Shell
 const planModeBtn = document.getElementById('planModeBtn');
 const buildModeBtn = document.getElementById('buildModeBtn');

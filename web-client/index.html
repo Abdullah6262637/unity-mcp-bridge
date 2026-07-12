@@ -7,6 +7,26 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Custom Frameless Titlebar -->
+    <header class="titlebar">
+        <div class="titlebar-drag-region"></div>
+        <div class="titlebar-logo">
+            <img src="logo.png" class="titlebar-logo-image" alt="Logo">
+            <span>UNITY AI STUDIO</span>
+        </div>
+        <div class="titlebar-controls">
+            <button id="windowMinimizeBtn" class="control-btn" title="Simge Durumuna Küçült">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            <button id="windowMaximizeBtn" class="control-btn" title="Tam Ekran Yap / Eski Boyuta Getir">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+            </button>
+            <button id="windowCloseBtn" class="control-btn close" title="Kapat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </header>
+
     <div class="app-workspace">
         <!-- Slide-out Settings Drawer (overlays from the left) -->
         <aside id="settingsDrawer" class="settings-drawer">
