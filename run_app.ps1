@@ -14,4 +14,7 @@ if (-not (Test-Path "node_modules")) {
 # Run electron
 & npm start
 
+# Restore path to root directory
+Set-Location -Path $PSScriptRoot
+
 Write-Host "[Desktop Boot] Shutdown complete. Goodbye!" -ForegroundColor Green
