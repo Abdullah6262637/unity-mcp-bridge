@@ -1,3 +1,10 @@
+@font-face {
+    font-family: 'Interwoven';
+    src: url('Interwoven.ttf') format('truetype'),
+         url('Interwoven.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
 
 :root {
     --bg-canvas: #000000;
@@ -13,6 +20,45 @@
     --bubble-user-border: #3f3f46;
     --bubble-assistant: #09090b;
     --bubble-assistant-border: #18181b;
+}
+
+/* Custom Vector Icons & Logo Styles */
+.icon {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
+.logo-image {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    margin-right: 8px;
+    border-radius: 4px;
+    background: transparent;
+}
+
+.tree-icon {
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    color: var(--text-secondary);
+}
+
+.drawer-close-btn .icon {
+    margin-right: 0;
+}
+
+/* Corporate Display Font Pairings */
+.logo-text, .tab-btn, .action-btn, .mode-btn, .send-btn, .plan-confirm-btn, h1, h2, h3, h4 {
+    font-family: 'Interwoven', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0.5px;
 }
 
 * {

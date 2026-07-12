@@ -12,7 +12,9 @@
         <aside id="settingsDrawer" class="settings-drawer">
             <div class="drawer-header">
                 <h3>API AYARLARI</h3>
-                <button id="closeSettingsBtn" class="drawer-close-btn">&times;</button>
+                <button id="closeSettingsBtn" class="drawer-close-btn">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
             <div class="settings-box">
                 <div class="input-group">
@@ -37,7 +39,7 @@
         <section class="chat-pane">
             <header class="pane-header">
                 <div class="header-left">
-                    <span class="logo-icon">🎮</span>
+                    <img src="logo.png" class="logo-image" alt="Logo">
                     <span class="logo-text">UNITY AI STUDIO</span>
                     <div class="status-indicator">
                         <div id="statusDot" class="status-dot"></div>
@@ -45,8 +47,14 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <button id="clearChatBtn" class="action-btn" title="Sohbeti Temizle">🗑️ TEMİZLE</button>
-                    <button id="toggleSettingsBtn" class="action-btn" title="API Ayarları">⚙️ AYARLAR</button>
+                    <button id="clearChatBtn" class="action-btn" title="Sohbeti Temizle">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        TEMİZLE
+                    </button>
+                    <button id="toggleSettingsBtn" class="action-btn" title="API Ayarları">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        AYARLAR
+                    </button>
                 </div>
             </header>
 
@@ -64,14 +72,22 @@
             <div class="input-area">
                 <div class="input-top-row">
                     <div class="mode-toggle-container">
-                        <button id="planModeBtn" class="mode-btn plan active">🔮 PLAN</button>
-                        <button id="buildModeBtn" class="mode-btn build">🛠️ BUILD</button>
+                        <button id="planModeBtn" class="mode-btn plan active">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
+                            PLAN
+                        </button>
+                        <button id="buildModeBtn" class="mode-btn build">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                            BUILD
+                        </button>
                     </div>
                     <span id="modeStatusText" class="mode-status-text">PLAN MODU AKTİF</span>
                 </div>
                 <div class="input-bottom-row">
                     <textarea id="chatInput" class="chat-input" placeholder="Unity'de ne yapmak istersin? (örn: Sahneye kırmızı bir küp ekle)" rows="1"></textarea>
-                    <button id="sendBtn" class="send-btn" aria-label="Gönder">🚀</button>
+                    <button id="sendBtn" class="send-btn" aria-label="Gönder">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
                 </div>
             </div>
         </section>
@@ -81,9 +97,18 @@
             <header class="pane-header">
                 <!-- Dashboard tabs styled like inspector tabs -->
                 <div class="dashboard-tabs">
-                    <button id="tabHierarchyBtn" class="tab-btn active">🌳 HIYARARŞİ</button>
-                    <button id="tabConsoleBtn" class="tab-btn">📟 KONSOL</button>
-                    <button id="tabCameraBtn" class="tab-btn">📸 GÖRÜNTÜ AL</button>
+                    <button id="tabHierarchyBtn" class="tab-btn active">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8M12 10H4v12M12 10h8v12"></path><circle cx="12" cy="10" r="1"></circle><circle cx="4" cy="22" r="1"></circle><circle cx="20" cy="22" r="1"></circle></svg>
+                        HIYERARŞİ
+                    </button>
+                    <button id="tabConsoleBtn" class="tab-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                        KONSOL
+                    </button>
+                    <button id="tabCameraBtn" class="tab-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        GÖRÜNTÜ AL
+                    </button>
                 </div>
             </header>
 
@@ -104,7 +129,7 @@
                 <div id="consoleScreen" class="tab-screen">
                     <div class="screen-header">
                         <h3>EDİTÖR KONSOL LOGLARI</h3>
-                        <button id="refreshConsoleBtn" class="action-btn">🔄 TEMİZLE/YENİLE</button>
+                        <button id="refreshConsoleBtn" class="action-btn">🔄 YENİLE</button>
                     </div>
                     <div id="consoleLogs" class="console-logs">
                         <p class="empty-state">Konsol logları yükleniyor...</p>
@@ -116,8 +141,8 @@
                     <div class="screen-header">
                         <h3>SAHNE EKRAN GÖRÜNTÜSÜ</h3>
                         <div class="capture-actions">
-                            <button id="captureSceneBtn" class="action-btn">📸 SCENE VIEW YAKALA</button>
-                            <button id="captureGameBtn" class="action-btn">🎮 GAME VIEW YAKALA</button>
+                            <button id="captureSceneBtn" class="action-btn">SCENE VIEW YAKALA</button>
+                            <button id="captureGameBtn" class="action-btn">GAME VIEW YAKALA</button>
                         </div>
                     </div>
                     <div id="screenshotContainer" class="screenshot-container">
