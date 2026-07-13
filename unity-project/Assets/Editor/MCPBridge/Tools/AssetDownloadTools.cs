@@ -44,9 +44,9 @@ namespace UnityMCPBridge
                 return "{\"success\":false,\"error\":\"url and save_path are required.\"}";
             }
 
-            if (!args.save_path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            if (!MCPToolRegistry.IsPathSafe(args.save_path))
             {
-                return "{\"success\":false,\"error\":\"save_path must start with 'Assets/' for security.\"}";
+                return "{\"success\":false,\"error\":\"save_path must be inside 'Assets/' directory and not perform traversal for security.\"}";
             }
 
             try

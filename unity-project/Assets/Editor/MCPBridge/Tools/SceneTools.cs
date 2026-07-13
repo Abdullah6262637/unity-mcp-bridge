@@ -8,6 +8,8 @@ namespace UnityMCPBridge
 {
     public class SceneTools : IMCPToolProvider
     {
+        private static int _serializedCount = 0;
+        private const int MaxSerializedObjects = 2000;
         [Serializable]
         private class CreateArgs
         {
@@ -23,11 +25,31 @@ namespace UnityMCPBridge
             public bool confirm;
         }
 
+        [Serializable]
+        private class HierarchyArgs
+        {
+            public int max_depth;
+        }
+
         public void RegisterTools()
         {
             MCPToolRegistry.Register("create_gameobject", CreateGameObject);
             MCPToolRegistry.Register("delete_gameobject", DeleteGameObject);
             MCPToolRegistry.Register("get_scene_hierarchy", GetSceneHierarchy);
+            MCPToolRegistry.Register("perform_undo", PerformUndo);
+            MCPToolRegistry.Register("perform_redo", PerformRedo);
+        }
+
+        private static string PerformUndo(string jsonArgs)
+        {
+            Undo.PerformUndo();
+            return "{\"success\":true}";
+        }
+
+        private static string PerformRedo(string jsonArgs)
+        {
+            Undo.PerformRedo();
+            return "{\"success\":true}";
         }
 
         private static string CreateGameObject(string jsonArgs)
@@ -134,11 +156,28 @@ namespace UnityMCPBridge
 
         private static string GetSceneHierarchy(string jsonArgs)
         {
+            int maxDepth = 3; // Default to 3 for safety
+            try
+            {
+                var args = JsonUtility.FromJson<HierarchyArgs>(jsonArgs);
+                if (args != null && args.max_depth > 0)
+                {
+                    maxDepth = args.max_depth;
+                }
+            }
+            catch {}
+
+            _serializedCount = 0;
             var rootObjects = SceneManager.GetActiveScene().GetRootGameObjects();
             var rootsJson = new List<string>();
             foreach (var root in rootObjects)
             {
-                rootsJson.Add(SerializeGameObject(root, string.Empty));
+                if (_serializedCount >= MaxSerializedObjects)
+                {
+                    rootsJson.Add($"{{\"name\":\"... [Daha fazla kök obje listelenmedi (Limit: {MaxSerializedObjects})]\"}}");
+                    break;
+                }
+                rootsJson.Add(SerializeGameObject(root, string.Empty, 1, maxDepth));
             }
             string hierarchyJson = "[" + string.Join(",", rootsJson) + "]";
             return $"{{\"success\":true,\"hierarchy\":{hierarchyJson}}}";
@@ -188,8 +227,9 @@ namespace UnityMCPBridge
             return "/" + path;
         }
 
-        private static string SerializeGameObject(GameObject go, string parentPath)
+        private static string SerializeGameObject(GameObject go, string parentPath, int currentDepth, int maxDepth)
         {
+            _serializedCount++;
             string path = string.IsNullOrEmpty(parentPath) ? $"/{go.name}" : $"{parentPath}/{go.name}";
 
             var components = go.GetComponents<Component>();
@@ -205,9 +245,17 @@ namespace UnityMCPBridge
             string compJson = "[" + string.Join(",", componentList.ConvertAll(c => $"\"{MCPToolRegistry.EscapeJson(c)}\"")) + "]";
 
             var childrenJson = new List<string>();
-            for (int i = 0; i < go.transform.childCount; i++)
+            if (maxDepth <= 0 || currentDepth < maxDepth)
             {
-                childrenJson.Add(SerializeGameObject(go.transform.GetChild(i).gameObject, path));
+                for (int i = 0; i < go.transform.childCount; i++)
+                {
+                    if (_serializedCount >= MaxSerializedObjects)
+                    {
+                        childrenJson.Add($"{{\"name\":\"... [Daha fazla alt obje listelenmedi (Limit: {MaxSerializedObjects})]\"}}");
+                        break;
+                    }
+                    childrenJson.Add(SerializeGameObject(go.transform.GetChild(i).gameObject, path, currentDepth + 1, maxDepth));
+                }
             }
             string childJson = "[" + string.Join(",", childrenJson) + "]";
 

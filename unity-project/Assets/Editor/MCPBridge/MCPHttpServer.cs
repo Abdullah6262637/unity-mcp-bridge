@@ -31,7 +31,13 @@ namespace UnityMCPBridge
         private static HttpListener _listener;
         private static Thread _listenerThread;
         private static readonly ConcurrentQueue<PendingRequest> _pendingRequests = new ConcurrentQueue<PendingRequest>();
+        private static readonly ConcurrentQueue<Action> _mainThreadQueue = new ConcurrentQueue<Action>();
         private static bool _isRunning = false;
+
+        public static void EnqueueOnMainThread(Action action)
+        {
+            _mainThreadQueue.Enqueue(action);
+        }
 
         public static PendingRequest CurrentRequest { get; private set; }
 
@@ -172,6 +178,19 @@ namespace UnityMCPBridge
 
         private static void Update()
         {
+            // Process actions dispatched from background thread on main thread
+            while (_mainThreadQueue.TryDequeue(out var action))
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            }
+
             // Process queued requests on Unity's main thread
             while (_pendingRequests.TryDequeue(out var request))
             {
@@ -185,6 +204,12 @@ namespace UnityMCPBridge
                     {
                         request.ResponseBody = $"{{\"status\":\"ok\",\"unityVersion\":\"{Application.unityVersion}\",\"platform\":\"{Application.platform}\"}}";
                         request.ResponseStatus = 200;
+                    }
+                    else if (path == "/chat/send")
+                    {
+                        isDeferred = true;
+                        // Run asynchronous multi-agent orchestrator in background task
+                        System.Threading.Tasks.Task.Run(() => AgentOrchestrator.ProcessChatAsync(request));
                     }
                     else if (path.StartsWith("/tools/"))
                     {

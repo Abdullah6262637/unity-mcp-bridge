@@ -57,10 +57,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'get_scene_hierarchy',
-        description: 'Retrieves the complete active scene hierarchy including GameObjects, active states, paths, and components.',
+        description: 'Retrieves the complete active scene hierarchy including GameObjects, active states, paths, transforms (position/rotation/scale), and components.',
         inputSchema: {
           type: 'object',
-          properties: {}
+          properties: {
+            max_depth: { type: 'number', description: 'Optional depth limit for serialization (e.g. 1 returns only root objects, 0 or omitted is unlimited).' }
+          }
         }
       },
       {
@@ -357,6 +359,115 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ['action']
         }
+      },
+      {
+        name: 'create_probuilder_shape',
+        description: 'Generates a 3D geometry shape (cube, plane) using the Unity ProBuilder API programmatically.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            shape_type: { type: 'string', description: 'The ProBuilder shape to create ("cube", "plane").' },
+            size: { type: 'array', items: { type: 'number' }, description: 'Size dimensions of the shape as [x, y, z].' },
+            position: { type: 'array', items: { type: 'number' }, description: 'World space position [x, y, z] to place the shape.' }
+          },
+          required: ['shape_type']
+        }
+      },
+      {
+        name: 'apply_material',
+        description: 'Assigns a Material asset from the project to a target GameObject Renderer.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            gameobject_path: { type: 'string', description: 'The path of the target GameObject (e.g., "/Cube").' },
+            material_path: { type: 'string', description: 'The project path to the material asset (e.g., "Assets/Materials/Red.mat").' }
+          },
+          required: ['gameobject_path', 'material_path']
+        }
+      },
+      {
+        name: 'set_material_properties',
+        description: 'Dynamically updates properties (color, metallic, smoothness) of a GameObject material.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            gameobject_path: { type: 'string', description: 'The path of the target GameObject.' },
+            color: { type: 'string', description: 'Hex color (e.g. "#FF0000") or RGB float array "[1,0,0]".' },
+            metallic: { type: 'number', description: 'Metallic value between 0.0 and 1.0.' },
+            smoothness: { type: 'number', description: 'Smoothness/Glossiness value between 0.0 and 1.0.' }
+          },
+          required: ['gameobject_path']
+        }
+      },
+      {
+        name: 'set_physics_properties',
+        description: 'Configures Rigidbody physics (mass, gravity) and add/update Collider components on a GameObject.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            gameobject_path: { type: 'string', description: 'The path of the target GameObject.' },
+            add_rigidbody: { type: 'boolean', description: 'Whether to force add a Rigidbody if not present.' },
+            mass: { type: 'number', description: 'The mass of the Rigidbody.' },
+            use_gravity: { type: 'string', enum: ['true', 'false'], description: 'Whether to enable or disable gravity.' },
+            collider_type: { type: 'string', enum: ['box', 'sphere', 'capsule', 'mesh', 'none'], description: 'The collider shape to add.' }
+          },
+          required: ['gameobject_path']
+        }
+      },
+      {
+        name: 'configure_cinemachine',
+        description: 'Sets follow and look-at targets, and offset distances on a Cinemachine camera component.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            gameobject_path: { type: 'string', description: 'The path of the Cinemachine camera GameObject.' },
+            follow_path: { type: 'string', description: 'The path of the GameObject to follow.' },
+            lookat_path: { type: 'string', description: 'The path of the GameObject to look at.' },
+            distance: { type: 'number', description: 'Camera offset distance.' }
+          },
+          required: ['gameobject_path']
+        }
+      },
+      {
+        name: 'instantiate_prefab',
+        description: 'Spawns a linked prefab asset at a specified position and parents it under a parent GameObject.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            prefab_path: { type: 'string', description: 'The project path to the prefab asset (e.g. "Assets/Prefabs/Car.prefab").' },
+            position: { type: 'array', items: { type: 'number' }, description: 'Position [x, y, z] to place the instance.' },
+            parent_path: { type: 'string', description: 'The path of the parent GameObject.' },
+            name: { type: 'string', description: 'New name for the instantiated GameObject.' }
+          },
+          required: ['prefab_path']
+        }
+      },
+      {
+        name: 'execute_editor_code',
+        description: 'Compiles and runs arbitrary Editor C# code blocks on the fly inside the Unity Editor.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', description: 'The complete C# script code to compile and execute. Must contain a public static method: public static string Execute()' }
+          },
+          required: ['code']
+        }
+      },
+      {
+        name: 'perform_undo',
+        description: 'Performs the last undo action in the Unity Editor.',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'perform_redo',
+        description: 'Performs the last redo action in the Unity Editor.',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
       }
     ]
   };
@@ -438,7 +549,37 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'manage_package':
         validatedArgs = schemas.ManagePackageSchema.parse(args);
         break;
-      // get_scene_hierarchy, get_compile_status, get_project_info have no schema parameters
+      case 'get_scene_hierarchy':
+        validatedArgs = schemas.GetSceneHierarchySchema.parse(args);
+        break;
+      case 'create_probuilder_shape':
+        validatedArgs = schemas.CreateProbuilderShapeSchema.parse(args);
+        break;
+      case 'apply_material':
+        validatedArgs = schemas.ApplyMaterialSchema.parse(args);
+        break;
+      case 'set_material_properties':
+        validatedArgs = schemas.SetMaterialPropertiesSchema.parse(args);
+        break;
+      case 'set_physics_properties':
+        validatedArgs = schemas.SetPhysicsPropertiesSchema.parse(args);
+        break;
+      case 'configure_cinemachine':
+        validatedArgs = schemas.ConfigureCinemachineSchema.parse(args);
+        break;
+      case 'instantiate_prefab':
+        validatedArgs = schemas.InstantiatePrefabSchema.parse(args);
+        break;
+      case 'execute_editor_code':
+        validatedArgs = schemas.ExecuteEditorCodeSchema.parse(args);
+        break;
+      case 'perform_undo':
+        validatedArgs = schemas.PerformUndoSchema.parse(args);
+        break;
+      case 'perform_redo':
+        validatedArgs = schemas.PerformRedoSchema.parse(args);
+        break;
+      // get_compile_status, get_project_info have no schema parameters
     }
 
     // Call Unity HTTP Bridge endpoint

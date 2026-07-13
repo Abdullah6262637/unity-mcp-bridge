@@ -37,27 +37,107 @@
                 </button>
             </div>
             <div class="settings-box">
-                <div class="input-group">
-                    <label for="endpointInput">Base URL (Endpoint)</label>
-                    <input type="text" id="endpointInput" value="https://ytdlp.kodyazar.com/v1">
+                <!-- Group 1: API & Model Connection -->
+                <div class="settings-group">
+                    <div class="settings-group-title">🔗 BAĞLANTI & MODEL</div>
+                    <div class="input-group">
+                        <label for="endpointInput">Base URL (Endpoint)</label>
+                        <input type="text" id="endpointInput" value="https://ytdlp.kodyazar.com/v1">
+                    </div>
+                    <div class="input-group">
+                        <label for="apiKeyInput">API Key</label>
+                        <input type="password" id="apiKeyInput" value="my-super-secret-password-123">
+                    </div>
+                    <div class="input-group">
+                        <label for="modelSelect">Model</label>
+                        <select id="modelSelect">
+                            <option value="claude-sonnet-4.5">claude-sonnet-4.5</option>
+                            <option value="minimax-m2.5">minimax-m2.5</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="unityPortInput">Unity Bridge Portu</label>
+                        <input type="number" id="unityPortInput" value="8090" min="1024" max="65535">
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label for="apiKeyInput">API Key</label>
-                    <input type="password" id="apiKeyInput" value="my-super-secret-password-123">
+
+                <!-- Group 2: Model Tuning -->
+                <div class="settings-group">
+                    <div class="settings-group-title">🧠 MODEL PARAMETRELERİ</div>
+                    <div class="input-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="tempInput">Yaratıcılık (Temp)</label>
+                            <span id="tempVal" style="font-size: 11px; font-weight: 800; color: #a855f7;">0.2</span>
+                        </div>
+                        <input type="range" id="tempInput" min="0" max="1" step="0.1" value="0.2" style="padding: 0;">
+                    </div>
+                    <div class="input-group">
+                        <label for="maxTokensInput">Max Tokens (Limit)</label>
+                        <input type="number" id="maxTokensInput" value="4096" min="512" max="16384">
+                    </div>
+                    <div class="input-group">
+                        <label for="customPromptInput">Özel Sistem Talimatı</label>
+                        <textarea id="customPromptInput" rows="2" style="background: var(--bg-canvas); border: 1px solid var(--border-color); padding: 8px 10px; border-radius: 10px; color: var(--text-primary); font-family: inherit; font-size: 13px; outline: none; resize: none;"></textarea>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label for="modelSelect">Model</label>
-                    <select id="modelSelect">
-                        <option value="claude-sonnet-4.5">claude-sonnet-4.5</option>
-                        <option value="minimax-m2.5">minimax-m2.5</option>
-                    </select>
+
+                <!-- Group 3: Unity Integration -->
+                <div class="settings-group">
+                    <div class="settings-group-title">🎮 UNITY ENTEGRASYONU</div>
+                    <div class="input-group checkbox-group" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                        <label for="autoRefreshToggle" style="margin-bottom: 0;">Auto Refresh Assets</label>
+                        <label class="switch">
+                            <input type="checkbox" id="autoRefreshToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="input-group checkbox-group" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                        <label for="autoPlayToggle" style="margin-bottom: 0;">Başarıda Play Mode</label>
+                        <label class="switch">
+                            <input type="checkbox" id="autoPlayToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="input-group">
+                        <label for="consoleVerbositySelect">Konsol Detayı</label>
+                        <select id="consoleVerbositySelect">
+                            <option value="errors">Sadece Hatalar</option>
+                            <option value="warnings" selected>Hatalar + Uyarılar</option>
+                            <option value="verbose">Tüm Loglar (Verbose)</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="input-group checkbox-group" style="flex-direction: row; align-items: center; gap: 10px; margin-top: 15px;">
-                    <input type="checkbox" id="deepThinkingToggle" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-color);">
-                    <label for="deepThinkingToggle" style="margin-bottom: 0; cursor: pointer; font-weight: 500;">Derin Düşünme (Deep Thinking)</label>
+
+                <!-- Group 4: Orchestration limits and sub-agents -->
+                <div class="settings-group">
+                    <div class="settings-group-title">🤖 ÇOKLU AJAN (OKS) LİMİTLERİ</div>
+                    <div class="input-group">
+                        <label for="maxLoopsInput">Max OKS Döngüsü</label>
+                        <input type="number" id="maxLoopsInput" value="6" min="2" max="15">
+                    </div>
+
                 </div>
-                
-                <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 20px 0;"></div>
+
+                <!-- Group 5: Aesthetics & Security -->
+                <div class="settings-group">
+                    <div class="settings-group-title">🛡️ GÜVENLİK & ESTETİK</div>
+                    <div class="input-group">
+                        <label for="execModeSelect">Komut Yetkilendirmesi</label>
+                        <select id="execModeSelect">
+                            <option value="manual" selected>Manuel Onay Al</option>
+                            <option value="auto">Otomatik Çalıştır</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="glowOpacityInput">Neon Parlaklığı</label>
+                            <span id="glowVal" style="font-size: 11px; font-weight: 800; color: var(--accent-color);">100%</span>
+                        </div>
+                        <input type="range" id="glowOpacityInput" min="0" max="100" step="10" value="100" style="padding: 0;">
+                    </div>
+                </div>
+
+                <div class="settings-divider" style="height: 1px; background: var(--border-color); margin: 10px 0;"></div>
                 
                 <h3 style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; letter-spacing: 0.5px;">SOHBET GEÇMİŞİ</h3>
                 <button id="newChatBtn" class="action-btn" style="width: 100%; justify-content: center; margin-bottom: 12px; border-radius: 10px; background: var(--accent-color); color: #000; font-weight: 700; border: none; padding: 10px; cursor: pointer; display: flex; gap: 6px; align-items: center;">
@@ -73,23 +153,31 @@
         <!-- Left Column: Chat Assistant -->
         <section class="chat-pane">
             <header class="pane-header">
-                <div class="header-left">
+                <div class="header-left" style="display: flex; align-items: center; gap: 12px;">
                     <div class="status-indicator" style="margin-left: 0;">
                         <div id="statusDot" class="status-dot"></div>
                         <span id="statusText" class="status-text">OFFLINE</span>
                     </div>
                 </div>
                 <div class="header-actions">
+                    <button id="undoBtn" class="action-btn" title="Geri Al (Undo)">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg> UNDO
+                    </button>
+                    <button id="redoBtn" class="action-btn" title="Yinele (Redo)">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg> REDO
+                    </button>
+                    <button id="exportChatBtn" class="action-btn" title="Sohbeti Dışa Aktar">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> DIŞA AKTAR
+                    </button>
                     <button id="clearChatBtn" class="action-btn" title="Sohbeti Temizle">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        TEMİZLE
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> TEMİZLE
                     </button>
                     <button id="toggleSettingsBtn" class="action-btn" title="API Ayarları">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                        AYARLAR
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> AYARLAR
                     </button>
                 </div>
             </header>
+
 
             <!-- Chat Message Feed -->
             <div id="chatFeed" class="chat-feed">
@@ -102,25 +190,56 @@
                 </div>
             </div>
 
+            <!-- Floating Options Bar (Slides up above input area) -->
+            <div id="floatingOptionsContainer" class="floating-options-container"></div>
+
             <!-- Input area (Integrated Mode Selector and Text Area) -->
             <div class="input-area">
                 <div class="input-top-row">
-                    <div class="mode-toggle-container">
-                        <button id="planModeBtn" class="mode-btn plan active">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
-                            PLAN
-                        </button>
-                        <button id="buildModeBtn" class="mode-btn build">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
-                            BUILD
-                        </button>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="mode-toggle-container">
+                            <button id="planModeBtn" class="mode-btn plan active">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+                                PLAN
+                            </button>
+                            <button id="buildModeBtn" class="mode-btn build">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                                BUILD
+                            </button>
+                        </div>
+                        <div class="deep-think-container">
+                            <label class="deep-think-switch" title="Derinlemesine mimari analiz ve planlama yapar">
+                                <input type="checkbox" id="deepThinkingToggle">
+                                <span class="deep-think-slider">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-4.12 2.5 2.5 0 0 1 0-4.88 2.5 2.5 0 0 1 0-4.12A2.5 2.5 0 0 1 9.5 2zM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-4.12 2.5 2.5 0 0 0 0-4.88 2.5 2.5 0 0 0 0-4.12A2.5 2.5 0 0 0 14.5 2z"/></svg>
+                                    <span>THINK</span>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="token-counter-indicator" id="tokenCounterBadge" style="display: none; margin-left: 8px;">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; margin-right: 4px; color: var(--text-muted);"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            <span id="tokenCounterText">0 / 150k</span>
+                        </div>
                     </div>
                     <span id="modeStatusText" class="mode-status-text">PLAN MODU AKTİF</span>
                 </div>
-                <div class="input-bottom-row">
-                    <textarea id="chatInput" class="chat-input" placeholder="Unity'de ne yapmak istersin? (örn: Sahneye kırmızı bir küp ekle)" rows="1"></textarea>
-                    <button id="sendBtn" class="send-btn" aria-label="Gönder">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                <!-- Image Preview Panel -->
+                <div id="imagePreviewContainer" style="display: none; padding: 8px 14px; position: relative;">
+                    <div style="position: relative; display: inline-block;">
+                        <img id="attachedImagePreview" src="" style="max-height: 80px; border-radius: 8px; border: 1px solid var(--border-color); display: block;">
+                        <button id="removeAttachedImageBtn" style="position: absolute; top: -6px; right: -6px; background: #ff5555; color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; font-weight: bold; padding: 0;">×</button>
+                    </div>
+                </div>
+
+                <div class="input-bottom-row" style="display: flex; align-items: center;">
+                    <button id="attachImageBtn" class="action-btn" style="padding: 10px; margin-right: 6px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--border-color); cursor: pointer;" title="Görsel Ekle">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    </button>
+                    <input type="file" id="imageAttachmentInput" accept="image/*" style="display: none;">
+                    
+                    <textarea id="chatInput" class="chat-input" placeholder="Unity'de ne yapmak istersin? (örn: Sahneye kırmızı bir küp ekle)" rows="1" style="flex: 1;"></textarea>
+                    <button id="sendBtn" class="send-btn" aria-label="Gönder" style="margin-left: 6px;">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     </button>
                 </div>
             </div>
@@ -140,7 +259,7 @@
                         ASSETLER
                     </button>
                     <button id="tabScriptsBtn" class="tab-btn">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                         SCRİPTLER
                     </button>
                     <button id="tabConsoleBtn" class="tab-btn">
@@ -151,6 +270,10 @@
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                         GÖRÜNTÜ AL
                     </button>
+                    <button id="tabAgentsBtn" class="tab-btn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="15" x2="23" y2="15"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="15" x2="4" y2="15"></line></svg>
+                        AJAN MATRİSİ
+                    </button>
                 </div>
             </header>
 
@@ -160,8 +283,9 @@
                 <div id="hierarchyScreen" class="tab-screen active">
                     <div class="screen-header">
                         <h3>SAHNE HİYERARŞİSİ</h3>
-                        <button id="refreshHierarchyBtn" class="action-btn">🔄 YENİLE</button>
+                        <button id="refreshHierarchyBtn" class="action-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> YENİLE</button>
                     </div>
+                    <input type="text" id="hierarchySearchInput" class="assets-search" placeholder="İsim veya t:Bileşen ara... (örn: Player, t:Light)" style="width: calc(100% - 20px); margin: 0 10px 10px 10px;">
                     <div id="hierarchyTree" class="hierarchy-tree">
                         <p class="empty-state">Hiyerarşi verisi yükleniyor...</p>
                     </div>
@@ -173,7 +297,7 @@
                         <h3>PROJE ASSET DOSYALARI</h3>
                         <div class="assets-actions">
                             <input type="text" id="assetsSearchInput" class="assets-search" placeholder="Asset ara... (örn: .cs, Prefab)">
-                            <button id="refreshAssetsBtn" class="action-btn">🔄 YENİLE</button>
+                            <button id="refreshAssetsBtn" class="action-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> YENİLE</button>
                         </div>
                     </div>
                     <div id="assetsList" class="assets-list">
@@ -186,8 +310,8 @@
                     <div class="screen-header">
                         <h3 id="currentScriptTitle">C# SCRİPT GÖRÜNTÜLEYİCİ</h3>
                         <div class="scripts-actions">
-                            <button id="copyScriptPathBtn" class="action-btn" style="display: none;">💬 SOHBETE EKLE</button>
-                            <button id="refreshScriptBtn" class="action-btn" style="display: none;">🔄 YENİLE</button>
+                            <button id="copyScriptPathBtn" class="action-btn" style="display: none;"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> SOHBETE EKLE</button>
+                            <button id="refreshScriptBtn" class="action-btn" style="display: none;"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> YENİLE</button>
                         </div>
                     </div>
                     <div id="scriptContentArea" class="script-content-area">
@@ -199,7 +323,7 @@
                 <div id="consoleScreen" class="tab-screen">
                     <div class="screen-header">
                         <h3>EDİTÖR KONSOL LOGLARI</h3>
-                        <button id="refreshConsoleBtn" class="action-btn">🔄 YENİLE</button>
+                        <button id="refreshConsoleBtn" class="action-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> YENİLE</button>
                     </div>
                     <div id="consoleLogs" class="console-logs">
                         <p class="empty-state">Konsol logları yükleniyor...</p>
@@ -219,8 +343,160 @@
                         <p class="empty-state">Henüz yakalanmış bir görüntü yok. Yukarıdaki butonlarla ekran görüntüsü alabilirsiniz.</p>
                     </div>
                 </div>
+
+                <!-- Agents View -->
+                <div id="agentsScreen" class="tab-screen">
+                    <div class="screen-header">
+                        <h3>🤖 AJAN MATRİSİ (OKS) DURUMU</h3>
+                    </div>
+                    <div class="agents-tab-grid" id="agentMatrixGrid">
+                        <!-- Orchestrator Card -->
+                        <div class="agent-card" id="agent-orchestrator">
+                            <div class="agent-card-main">
+                                <div class="agent-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px;"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="15" x2="23" y2="15"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="15" x2="4" y2="15"></line></svg>
+                                </div>
+                                <div class="agent-info">
+                                    <div class="agent-header-row">
+                                        <span class="agent-name">Orkestra Şefi</span>
+                                        <span class="agent-status" id="status-orchestrator">Boşta</span>
+                                    </div>
+                                    <div class="agent-desc">Unity geliştirme hedeflerini analiz eder ve alt uzman ajanlara görev dağılımı yapar.</div>
+                                </div>
+                            </div>
+                            <div class="agent-indicator"></div>
+                        </div>
+
+                        <!-- Scripting Card -->
+                        <div class="agent-card" id="agent-scripting">
+                            <div class="agent-card-main">
+                                <div class="agent-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px;"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                                </div>
+                                <div class="agent-info">
+                                    <div class="agent-header-row">
+                                        <span class="agent-name">Kod & Mekanik</span>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span class="agent-status" id="status-scripting">Boşta</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="agentEnable_scripting" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="agent-desc">C# scriptleri yazar, düzenler ve Unity derleme hatalarını giderir.</div>
+                                </div>
+                            </div>
+                            <div class="agent-indicator"></div>
+                        </div>
+
+                        <!-- Modeling Card -->
+                        <div class="agent-card" id="agent-modeling">
+                            <div class="agent-card-main">
+                                <div class="agent-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                </div>
+                                <div class="agent-info">
+                                    <div class="agent-header-row">
+                                        <span class="agent-name">3D Varlık & Model</span>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span class="agent-status" id="status-modeling">Boşta</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="agentEnable_modeling" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="agent-desc">3D mesh'ler yerleştirir, model atamaları ve geometri üretimi yapar.</div>
+                                </div>
+                            </div>
+                            <div class="agent-indicator"></div>
+                        </div>
+
+                        <!-- GUI Card -->
+                        <div class="agent-card" id="agent-gui">
+                            <div class="agent-card-main">
+                                <div class="agent-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px;"><path d="M12 22C17.52 22 22 17.52 22 12S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm0-18c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-5.5 6c.83 0 1.5.67 1.5 1.5S7.33 13 6.5 13 5 12.33 5 11.5 5.67 10 6.5 10zm11 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zm-5.5 5c.83 0 1.5.67 1.5 1.5S13 18 12.17 18 10.67 17.33 10.67 16.5s.67-1.5 1.5-1.5z"></path></svg>
+                                </div>
+                                <div class="agent-info">
+                                    <div class="agent-header-row">
+                                        <span class="agent-name">Arayüz (GUI)</span>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span class="agent-status" id="status-gui">Boşta</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="agentEnable_gui" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="agent-desc">Canvas, Panel, TextMeshPro, buton ve HUD elemanlarını yönetir.</div>
+                                </div>
+                            </div>
+                            <div class="agent-indicator"></div>
+                        </div>
+
+                        <!-- Audio Card -->
+                        <div class="agent-card" id="agent-audio">
+                            <div class="agent-card-main">
+                                <div class="agent-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                </div>
+                                <div class="agent-info">
+                                    <div class="agent-header-row">
+                                        <span class="agent-name">Ses & Müzik</span>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span class="agent-status" id="status-audio">Boşta</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="agentEnable_audio" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="agent-desc">AudioSource, AudioClip ve ses tetikleyicilerini yönetir.</div>
+                                </div>
+                            </div>
+                            <div class="agent-indicator"></div>
+                        </div>
+
+                        <!-- Layout Card -->
+                        <div class="agent-card" id="agent-layout">
+                            <div class="agent-card-main">
+                                <div class="agent-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                </div>
+                                <div class="agent-info">
+                                    <div class="agent-header-row">
+                                        <span class="agent-name">Düzen & Fizik</span>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span class="agent-status" id="status-layout">Boşta</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="agentEnable_layout" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="agent-desc">RigidBody, Collider ve Transform/fizik ayarlarını düzenler.</div>
+                                </div>
+                            </div>
+                            <div class="agent-indicator"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
+    </div>
+
+    <!-- Compilation Error Warning Modal -->
+    <div id="compileErrorModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-secondary); border: 2px solid #ff5555; border-radius: 12px; padding: 25px; max-width: 450px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <h3 style="color: #ff5555; margin-bottom: 12px; font-weight: 700; letter-spacing: 0.5px;">⚠️ DERLEME HATASI ALGILANDI</h3>
+            <p style="margin-bottom: 20px; font-size: 14px; color: var(--text-secondary); line-height: 1.6;">Unity projesinde derleme hatası tespit edildi. AI asistanının hata veren C# dosyalarını okuyarak otomatik düzeltmesini ister misiniz?</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="fixCompileErrorBtn" class="action-btn" style="background: #ff5555; color: #fff; font-weight: 700; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">EVET, DÜZELT</button>
+                <button id="closeCompileErrorBtn" class="action-btn" style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 8px; cursor: pointer;">YOKSAY</button>
+            </div>
+        </div>
     </div>
 
     <!-- Core App Logic -->

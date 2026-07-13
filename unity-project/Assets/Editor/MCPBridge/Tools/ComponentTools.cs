@@ -230,7 +230,40 @@ namespace UnityMCPBridge
                 }
             }
 
+            if (targetType == typeof(Mesh))
+            {
+                string lowerVal = rawValue.ToLower().Trim();
+                if (lowerVal == "cube" || lowerVal == "sphere" || lowerVal == "capsule" || lowerVal == "cylinder" || lowerVal == "plane")
+                {
+                    GameObject tempGo = GameObject.CreatePrimitive(GetPrimitiveType(lowerVal));
+                    Mesh mesh = tempGo.GetComponent<MeshFilter>().sharedMesh;
+                    GameObject.DestroyImmediate(tempGo);
+                    return mesh;
+                }
+
+                Mesh loadedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(rawValue);
+                if (loadedMesh != null) return loadedMesh;
+
+                var subAssets = AssetDatabase.LoadAllAssetsAtPath(rawValue);
+                if (subAssets != null)
+                {
+                    foreach (var sub in subAssets)
+                    {
+                        if (sub is Mesh m) return m;
+                    }
+                }
+            }
+
             return Convert.ChangeType(rawValue, targetType);
+        }
+
+        private static PrimitiveType GetPrimitiveType(string name)
+        {
+            if (name == "sphere") return PrimitiveType.Sphere;
+            if (name == "capsule") return PrimitiveType.Capsule;
+            if (name == "cylinder") return PrimitiveType.Cylinder;
+            if (name == "plane") return PrimitiveType.Plane;
+            return PrimitiveType.Cube;
         }
     }
 }

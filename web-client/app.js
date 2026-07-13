@@ -1,13 +1,20 @@
 // Unity MCP Bridge Web Client (Direct Unity Studio Edition)
 
 // Connection Settings
-const UNITY_URL = 'http://127.0.0.1:8090';
+let unityPortInput = null;
+function getUnityUrl() {
+    if (!unityPortInput) unityPortInput = document.getElementById('unityPortInput');
+    const port = unityPortInput ? unityPortInput.value.trim() : '8090';
+    return `http://127.0.0.1:${port}`;
+}
 
 // Mode & Tab States
 let currentMode = 'plan'; // 'plan' or 'build'
 let isChatActive = false;
 let messageHistory = [];
 let currentChatId = null;
+let historySummary = '';
+let rawHierarchy = [];
 let activeDashboardTab = 'hierarchy'; // 'hierarchy', 'console', 'camera'
 
 // --- Custom Titlebar Window Controls Binding ---
@@ -21,7 +28,20 @@ if (window.electronAPI) {
 const planModeBtn = document.getElementById('planModeBtn');
 const buildModeBtn = document.getElementById('buildModeBtn');
 const modeStatusText = document.getElementById('modeStatusText');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+const exportChatBtn = document.getElementById('exportChatBtn');
 const clearChatBtn = document.getElementById('clearChatBtn');
+const compileErrorModal = document.getElementById('compileErrorModal');
+const fixCompileErrorBtn = document.getElementById('fixCompileErrorBtn');
+const closeCompileErrorBtn = document.getElementById('closeCompileErrorBtn');
+let hasPromptedCompileError = false;
+const attachImageBtn = document.getElementById('attachImageBtn');
+const imageAttachmentInput = document.getElementById('imageAttachmentInput');
+const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+const attachedImagePreview = document.getElementById('attachedImagePreview');
+const removeAttachedImageBtn = document.getElementById('removeAttachedImageBtn');
+let attachedImageBase64 = null;
 const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 const settingsDrawer = document.getElementById('settingsDrawer');
@@ -58,7 +78,8 @@ const tabs = [
     { btn: document.getElementById('tabAssetsBtn'), screen: document.getElementById('assetsScreen'), name: 'assets' },
     { btn: document.getElementById('tabScriptsBtn'), screen: document.getElementById('scriptsScreen'), name: 'scripts' },
     { btn: tabConsoleBtn, screen: consoleScreen, name: 'console' },
-    { btn: tabCameraBtn, screen: cameraScreen, name: 'camera' }
+    { btn: tabCameraBtn, screen: cameraScreen, name: 'camera' },
+    { btn: document.getElementById('tabAgentsBtn'), screen: document.getElementById('agentsScreen'), name: 'agents' }
 ];
 
 tabs.forEach(t => {
@@ -78,14 +99,132 @@ tabs.forEach(t => {
     });
 });
 
-// --- Settings Drawer Bindings ---
+// --- Settings Drawer Bindings & Persistent Load/Save ---
 const deepThinkingToggle = document.getElementById('deepThinkingToggle');
-if (deepThinkingToggle) {
-    deepThinkingToggle.checked = localStorage.getItem('deep_thinking_enabled') === 'true';
-    deepThinkingToggle.addEventListener('change', () => {
-        localStorage.setItem('deep_thinking_enabled', deepThinkingToggle.checked);
+unityPortInput = document.getElementById('unityPortInput');
+const tempInput = document.getElementById('tempInput');
+const tempVal = document.getElementById('tempVal');
+const maxTokensInput = document.getElementById('maxTokensInput');
+const customPromptInput = document.getElementById('customPromptInput');
+const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+const autoPlayToggle = document.getElementById('autoPlayToggle');
+const consoleVerbositySelect = document.getElementById('consoleVerbositySelect');
+const maxLoopsInput = document.getElementById('maxLoopsInput');
+const execModeSelect = document.getElementById('execModeSelect');
+const glowOpacityInput = document.getElementById('glowOpacityInput');
+const glowVal = document.getElementById('glowVal');
+
+const agentEnable_scripting = document.getElementById('agentEnable_scripting');
+const agentEnable_modeling = document.getElementById('agentEnable_modeling');
+const agentEnable_gui = document.getElementById('agentEnable_gui');
+const agentEnable_audio = document.getElementById('agentEnable_audio');
+const agentEnable_layout = document.getElementById('agentEnable_layout');
+
+function loadSettings() {
+    // Basic connections
+    if (localStorage.getItem('api_endpoint')) endpointInput.value = localStorage.getItem('api_endpoint');
+    if (localStorage.getItem('api_key')) apiKeyInput.value = localStorage.getItem('api_key');
+    if (localStorage.getItem('api_model')) modelSelect.value = localStorage.getItem('api_model');
+    if (localStorage.getItem('unity_port')) unityPortInput.value = localStorage.getItem('unity_port');
+
+    // Deep Thinking
+    if (deepThinkingToggle) {
+        deepThinkingToggle.checked = localStorage.getItem('deep_thinking_enabled') === 'true';
+    }
+
+    // Advanced Model Tuning
+    if (localStorage.getItem('temp')) {
+        tempInput.value = localStorage.getItem('temp');
+        tempVal.textContent = tempInput.value;
+    }
+    if (localStorage.getItem('max_tokens')) maxTokensInput.value = localStorage.getItem('max_tokens');
+    if (localStorage.getItem('custom_prompt')) customPromptInput.value = localStorage.getItem('custom_prompt');
+
+    // Unity integration
+    if (localStorage.getItem('auto_refresh')) autoRefreshToggle.checked = localStorage.getItem('auto_refresh') === 'true';
+    if (localStorage.getItem('auto_play')) autoPlayToggle.checked = localStorage.getItem('auto_play') === 'true';
+    if (localStorage.getItem('console_verbosity')) consoleVerbositySelect.value = localStorage.getItem('console_verbosity');
+
+    // Orchestrator
+    if (localStorage.getItem('max_loops')) maxLoopsInput.value = localStorage.getItem('max_loops');
+    
+    // Sub-agents toggles
+    const agents = ['scripting', 'modeling', 'gui', 'audio', 'layout'];
+    agents.forEach(k => {
+        const el = document.getElementById(`agentEnable_${k}`);
+        if (el) {
+            const saved = localStorage.getItem(`agent_enabled_${k}`);
+            el.checked = saved !== 'false'; // Default to true if not set
+        }
     });
+
+    // Security & UI Glow
+    if (localStorage.getItem('exec_mode')) execModeSelect.value = localStorage.getItem('exec_mode');
+    if (localStorage.getItem('glow_opacity')) {
+        glowOpacityInput.value = localStorage.getItem('glow_opacity');
+        glowVal.textContent = `${glowOpacityInput.value}%`;
+        document.documentElement.style.setProperty('--glow-opacity', glowOpacityInput.value / 100);
+    }
 }
+
+function saveSettings() {
+    localStorage.setItem('api_endpoint', endpointInput.value.trim());
+    localStorage.setItem('api_key', apiKeyInput.value.trim());
+    localStorage.setItem('api_model', modelSelect.value);
+    localStorage.setItem('unity_port', unityPortInput.value.trim());
+    
+    if (deepThinkingToggle) localStorage.setItem('deep_thinking_enabled', deepThinkingToggle.checked);
+    
+    localStorage.setItem('temp', tempInput.value);
+    localStorage.setItem('max_tokens', maxTokensInput.value);
+    localStorage.setItem('custom_prompt', customPromptInput.value);
+    
+    localStorage.setItem('auto_refresh', autoRefreshToggle.checked);
+    localStorage.setItem('auto_play', autoPlayToggle.checked);
+    localStorage.setItem('console_verbosity', consoleVerbositySelect.value);
+    
+    localStorage.setItem('max_loops', maxLoopsInput.value);
+    
+    const agents = ['scripting', 'modeling', 'gui', 'audio', 'layout'];
+    agents.forEach(k => {
+        const el = document.getElementById(`agentEnable_${k}`);
+        if (el) {
+            localStorage.setItem(`agent_enabled_${k}`, el.checked);
+        }
+    });
+    
+    localStorage.setItem('exec_mode', execModeSelect.value);
+    localStorage.setItem('glow_opacity', glowOpacityInput.value);
+}
+
+// Attach event listeners for real-time saving
+[
+    endpointInput, apiKeyInput, modelSelect, unityPortInput,
+    tempInput, maxTokensInput, customPromptInput,
+    autoRefreshToggle, autoPlayToggle, consoleVerbositySelect,
+    maxLoopsInput, execModeSelect, glowOpacityInput,
+    agentEnable_scripting, agentEnable_modeling, agentEnable_gui,
+    agentEnable_audio, agentEnable_layout
+].forEach(el => {
+    if (el) {
+        const evt = (el.type === 'range' || el.type === 'textarea' || el.type === 'text' || el.type === 'password' || el.type === 'number') ? 'input' : 'change';
+        el.addEventListener(evt, () => {
+            if (el === tempInput) tempVal.textContent = tempInput.value;
+            if (el === glowOpacityInput) {
+                glowVal.textContent = `${glowOpacityInput.value}%`;
+                document.documentElement.style.setProperty('--glow-opacity', glowOpacityInput.value / 100);
+            }
+            saveSettings();
+        });
+    }
+});
+
+if (deepThinkingToggle) {
+    deepThinkingToggle.addEventListener('change', saveSettings);
+}
+
+// Load settings immediately on execution
+loadSettings();
 
 toggleSettingsBtn.addEventListener('click', () => {
     settingsDrawer.classList.toggle('open');
@@ -127,6 +266,133 @@ clearChatBtn.addEventListener('click', () => {
     `;
 });
 
+// --- Undo / Redo Actions ---
+undoBtn.addEventListener('click', async () => {
+    if (isChatActive) return;
+    setStatusMessage("↺ Unity Editor'de son işlem geri alınıyor...");
+    const res = await executeUnityTool('perform_undo', {});
+    clearStatusMessage();
+    if (res && res.success) {
+        appendMessage('assistant', "🔄 Son işlem başarıyla geri alındı (Undo).");
+        setTimeout(refreshHierarchy, 500);
+    } else {
+        appendMessage('assistant', `⚠️ Geri alma başarısız oldu: ${res ? res.error : 'Bilinmeyen hata'}`);
+    }
+});
+
+redoBtn.addEventListener('click', async () => {
+    if (isChatActive) return;
+    setStatusMessage("↻ Unity Editor'de son işlem yenileniyor...");
+    const res = await executeUnityTool('perform_redo', {});
+    clearStatusMessage();
+    if (res && res.success) {
+        appendMessage('assistant', "🔄 Son işlem başarıyla yenilendi (Redo).");
+        setTimeout(refreshHierarchy, 500);
+    } else {
+        appendMessage('assistant', `⚠️ Yineleme başarısız oldu: ${res ? res.error : 'Bilinmeyen hata'}`);
+    }
+});
+
+// --- Image Attachment & Analysis (Multimodal AI) ---
+if (attachImageBtn && imageAttachmentInput) {
+    attachImageBtn.addEventListener('click', () => {
+        if (isChatActive) return;
+        imageAttachmentInput.click();
+    });
+
+    imageAttachmentInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            attachedImageBase64 = event.target.result;
+            if (attachedImagePreview && imagePreviewContainer) {
+                attachedImagePreview.src = attachedImageBase64;
+                imagePreviewContainer.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(file);
+        
+        // Reset file input value to allow uploading same file again
+        imageAttachmentInput.value = '';
+    });
+}
+
+if (removeAttachedImageBtn) {
+    removeAttachedImageBtn.addEventListener('click', () => {
+        attachedImageBase64 = null;
+        if (imagePreviewContainer && attachedImagePreview) {
+            imagePreviewContainer.style.display = 'none';
+            attachedImagePreview.src = '';
+        }
+    });
+}
+
+// --- Copy-Paste Image Clipboard Support ---
+if (chatInput) {
+    chatInput.addEventListener('paste', (e) => {
+        const clipboardItems = (e.clipboardData || window.clipboardData).items;
+        for (const item of clipboardItems) {
+            if (item.type.indexOf('image') === 0) {
+                const file = item.getAsFile();
+                if (!file) continue;
+
+                // Stop text pasting of image data/filename
+                e.preventDefault();
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    attachedImageBase64 = event.target.result;
+                    if (attachedImagePreview && imagePreviewContainer) {
+                        attachedImagePreview.src = attachedImageBase64;
+                        imagePreviewContainer.style.display = 'block';
+                    }
+                };
+                reader.readAsDataURL(file);
+                break;
+            }
+        }
+    });
+}
+
+// --- Agent Matrix Toggle Collapse ---
+const toggleAgentMatrixBtn = document.getElementById('toggleAgentMatrixBtn');
+const agentMatrixContainer = document.getElementById('agentMatrixContainer');
+if (toggleAgentMatrixBtn && agentMatrixContainer) {
+    toggleAgentMatrixBtn.addEventListener('click', () => {
+        agentMatrixContainer.classList.toggle('collapsed');
+    });
+}
+
+// --- Export Chat (Markdown File Download) ---
+exportChatBtn.addEventListener('click', () => {
+    if (messageHistory.length === 0) {
+        alert("Dışa aktarılacak sohbet geçmişi yok.");
+        return;
+    }
+
+    let markdown = `# Unity AI Studio - Sohbet Geçmişi\n\n`;
+    markdown += `**Tarih:** ${new Date().toLocaleString()}\n`;
+    markdown += `**Mod:** ${currentMode.toUpperCase()}\n`;
+    markdown += `**Unity Sürümü:** ${statusText.textContent}\n\n---\n\n`;
+
+    messageHistory.forEach(msg => {
+        const roleName = msg.role === 'user' ? 'KULLANICI' : 'UNITY AI ASİSTAN';
+        markdown += `### 👤 ${roleName}\n\n`;
+        markdown += `${msg.content}\n\n---\n\n`;
+    });
+
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Unity_AI_Sohbet_Geçmişi_${Date.now()}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
 // --- Auto-size Textarea ---
 chatInput.addEventListener('input', () => {
     chatInput.style.height = 'auto';
@@ -141,7 +407,10 @@ async function refreshHierarchy() {
     }
     const data = await executeUnityTool('get_scene_hierarchy', {});
     if (data && data.success && data.hierarchy) {
-        renderHierarchy(data.hierarchy);
+        rawHierarchy = data.hierarchy;
+        const searchInput = document.getElementById('hierarchySearchInput');
+        const query = searchInput ? searchInput.value : '';
+        renderHierarchy(filterHierarchy(rawHierarchy, query));
     } else if (!hasData) {
         let errMsg = '';
         if (data) {
@@ -155,6 +424,58 @@ async function refreshHierarchy() {
     }
 }
 refreshHierarchyBtn.addEventListener('click', refreshHierarchy);
+
+const hierarchySearchInput = document.getElementById('hierarchySearchInput');
+if (hierarchySearchInput) {
+    hierarchySearchInput.addEventListener('input', () => {
+        renderHierarchy(filterHierarchy(rawHierarchy, hierarchySearchInput.value));
+    });
+}
+
+function filterHierarchy(nodes, query) {
+    if (!query) return nodes;
+    
+    query = query.toLowerCase().trim();
+    const isComponentSearch = query.startsWith('t:');
+    const searchTerm = isComponentSearch ? query.substring(2).trim() : query;
+    
+    if (!searchTerm) return nodes;
+
+    function matches(node) {
+        if (isComponentSearch) {
+            if (node.components && node.components.some(c => c.toLowerCase().includes(searchTerm))) {
+                return true;
+            }
+        } else {
+            if (node.name && node.name.toLowerCase().includes(searchTerm)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function processNode(node) {
+        let filteredChildren = [];
+        if (node.children && node.children.length > 0) {
+            filteredChildren = node.children
+                .map(child => processNode(child))
+                .filter(child => child !== null);
+        }
+
+        const nodeMatches = matches(node);
+        const hasMatchingChildren = filteredChildren.length > 0;
+
+        if (nodeMatches || hasMatchingChildren) {
+            return {
+                ...node,
+                children: filteredChildren
+            };
+        }
+        return null;
+    }
+
+    return nodes.map(node => processNode(node)).filter(node => node !== null);
+}
 
 function renderHierarchy(hierarchy) {
     hierarchyTree.innerHTML = '';
@@ -492,16 +813,26 @@ if (copyScriptPathBtn) {
 // --- Connection Polling & Auto Refresh ---
 async function checkUnityConnection() {
     try {
-        const res = await fetch(`${UNITY_URL}/health`, { method: 'GET' });
+        const res = await fetch(`${getUnityUrl()}/health`, { method: 'GET' });
         if (res.ok) {
             const data = await res.json();
             statusDot.classList.add('online');
             statusText.textContent = `CONNECTED (v${data.unityVersion})`;
+
+            // Query compilation status to detect errors and trigger popup
+            const compileStatus = await executeUnityTool('get_compile_status', {});
+            if (compileStatus && compileStatus.success && compileStatus.hasErrors) {
+                if (!hasPromptedCompileError && !isChatActive) {
+                    hasPromptedCompileError = true;
+                    compileErrorModal.style.display = 'flex';
+                }
+            } else {
+                hasPromptedCompileError = false;
+            }
             
-            // Auto refresh active tab dynamically
+            // Auto refresh active tab dynamically (Console/Camera are polled separately)
             if (activeDashboardTab === 'hierarchy') refreshHierarchy();
             if (activeDashboardTab === 'assets') refreshAssets();
-            if (activeDashboardTab === 'console') refreshConsoleLogs();
         } else {
             throw new Error();
         }
@@ -512,6 +843,34 @@ async function checkUnityConnection() {
 }
 setInterval(checkUnityConnection, 3000);
 checkUnityConnection();
+
+// --- Live Streams (Console Logs & Viewport Camera Capture) Polling ---
+setInterval(async () => {
+    if (isChatActive) return; // Skip polling during active AI tool execution to prevent port/state conflicts
+    if (statusText.textContent === 'OFFLINE') return; // Skip if offline
+
+    // Console Live Stream (Task 6)
+    if (activeDashboardTab === 'console') {
+        await refreshConsoleLogs();
+    }
+    
+    // Viewport Live Stream (Task 9)
+    if (activeDashboardTab === 'camera') {
+        await captureScreenshot('scene');
+    }
+}, 1000);
+
+closeCompileErrorBtn.addEventListener('click', () => {
+    compileErrorModal.style.display = 'none';
+});
+
+fixCompileErrorBtn.addEventListener('click', () => {
+    compileErrorModal.style.display = 'none';
+    chatInput.value = "Unity'de derleme hatası oluştu. Lütfen get_compile_status aracını kullanarak derleme hatalarını al, dosyaları incele ve hataları otomatik olarak düzelt.";
+    chatInput.style.height = 'auto';
+    chatInput.style.height = (chatInput.scrollHeight) + 'px';
+    sendBtn.click();
+});
 
 // --- OpenLLM-compatible Tools List (Compacted to save token space) ---
 const TOOLS = [
@@ -865,14 +1224,79 @@ RULES FOR PLAN MODE:
    - **Değişiklik Planı**: Exactly what scripts will be modified, what new objects/components will be added.
    - **Görev Listesi**: A clear checklist of implementation tasks.
    - **Doğrulama Adımları**: How to verify the changes (e.g., playmode tests, console verification).
-5. Do not suggest or write code inside the plan itself, just describe the changes and structure. Wait for the user to approve the plan.`;
+5. Do not suggest or write code inside the plan itself, just describe the changes and structure. Wait for the user to approve the plan.
+6. If the task has multiple alternative ways to solve (or if you want to let the user select between different choices), you MUST explicitly list them as options in your markdown text using the exact syntax:
+   [SEÇENEK 1]: Option Title - Option Description
+   [SEÇENEK 2]: Option Title - Option Description
+   [SEÇENEK 3]: Option Title - Option Description
+   [SEÇENEK 4]: Option Title - Option Description`;
 
 const BUILD_SYSTEM_PROMPT = `You are a Unity AI Givelopment Assistant running in BUILD MODE.
 Execute the approved plan using the available Unity tools.
 You have access to tools to modify the scene, write scripts, build prefabs, run tests, and capture screenshots.
 Always call the tools to execute changes, and verify success.`;
 
-function appendMessage(role, text, reasoningText = '', durationSeconds = 0) {
+let thinkingInterval = null;
+
+function appendThinkingPlaceholder() {
+    const row = document.createElement('div');
+    row.className = 'message-row assistant thinking-placeholder-row';
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble thinking-placeholder-bubble';
+    
+    bubble.innerHTML = `
+        <div class="thinking-spinner-container">
+            <div class="brain-glow-ring"></div>
+            <div class="brain-pulse-icon">🧠</div>
+            <div class="thinking-text-stream">
+                <span class="thinking-word">Yapay Zeka Düşünüyor<span class="thinking-dots">...</span></span>
+            </div>
+        </div>
+        <div class="thinking-sub-status" id="thinkingSubStatus" style="transition: opacity 0.3s ease;">
+            Orkestra Şefi sahne mimarisini ve hedefleri analiz ediyor...
+        </div>
+        <div class="thinking-progress-bar-container">
+            <div class="thinking-progress-bar"></div>
+        </div>
+    `;
+    
+    row.appendChild(bubble);
+    chatFeed.appendChild(row);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+    
+    const phrases = [
+        "Orkestra Şefi sahne mimarisini ve hedefleri analiz ediyor...",
+        "Unity sahne hiyerarşisi ve nesneleri taranıyor...",
+        "C# kod dosyaları ve derleme durumu kontrol ediliyor...",
+        "Görev uzman alt ajanlar arasında koordine ediliyor...",
+        "Ajanlar gerekli araç çağrılarını ve değişiklikleri planlıyor...",
+        "Derleme planı ve fizik bileşenleri optimize ediliyor..."
+    ];
+    
+    let currentIdx = 0;
+    const subStatusEl = bubble.querySelector('#thinkingSubStatus');
+    
+    if (thinkingInterval) clearInterval(thinkingInterval);
+    thinkingInterval = setInterval(() => {
+        if (!document.body.contains(row)) {
+            clearInterval(thinkingInterval);
+            return;
+        }
+        currentIdx = (currentIdx + 1) % phrases.length;
+        if (subStatusEl) {
+            subStatusEl.style.opacity = '0';
+            setTimeout(() => {
+                subStatusEl.textContent = phrases[currentIdx];
+                subStatusEl.style.opacity = '1';
+            }, 300);
+        }
+    }, 4000);
+    
+    return row;
+}
+
+function appendMessage(role, text, reasoningText = '', durationSeconds = 0, imageUrl = '') {
     const row = document.createElement('div');
     row.className = `message-row ${role}`;
     
@@ -930,6 +1354,17 @@ function appendMessage(role, text, reasoningText = '', durationSeconds = 0) {
     contentDiv.className = 'message-content';
     contentDiv.innerHTML = formatHTML(resultContent);
     bubble.appendChild(contentDiv);
+
+    if (imageUrl) {
+        const attachedImg = document.createElement('img');
+        attachedImg.src = imageUrl;
+        attachedImg.style.maxWidth = '100%';
+        attachedImg.style.maxHeight = '250px';
+        attachedImg.style.borderRadius = '8px';
+        attachedImg.style.marginTop = '8px';
+        attachedImg.style.display = 'block';
+        bubble.appendChild(attachedImg);
+    }
     
     row.appendChild(bubble);
     chatFeed.appendChild(row);
@@ -992,31 +1427,239 @@ function appendToolBox(name, args) {
 }
 
 function appendPlanConfirmPanel() {
-    const box = document.createElement('div');
-    box.className = 'plan-confirmation-box';
-    box.innerHTML = `
-        <h4>PLAN HAZIRLANDI! 🔮</h4>
-        <p>Planı onaylayıp Build Moduna geçerek değişiklikleri uygulamak ister misiniz?</p>
-        <button class="plan-confirm-btn" id="confirmPlanBtn">PLANi ONAYLA VE DERLE</button>
-    `;
-    chatFeed.appendChild(box);
-    chatFeed.scrollTop = chatFeed.scrollHeight;
+    const lastMsg = messageHistory[messageHistory.length - 1];
+    let options = [];
+    let tasks = [];
 
-    document.getElementById('confirmPlanBtn').addEventListener('click', () => {
-        box.remove();
-        currentMode = 'build';
-        buildModeBtn.classList.add('active');
-        planModeBtn.classList.remove('active');
-        modeStatusText.textContent = 'BUILD MODU AKTİF';
-        appendMessage('assistant', 'Plan onaylandı! 🛠️ Build Moduna geçildi. Değişiklikleri uygulamaya başlıyorum.');
-        runBuildProcess();
-    });
+    if (lastMsg && lastMsg.role === 'assistant') {
+        const content = lastMsg.content || '';
+        // Match [SEÇENEK X]: Title
+        const optionRegex = /\[SEÇENEK\s*(\d+)\]:\s*([^\n\r]+)/gi;
+        let match;
+        while ((match = optionRegex.exec(content)) !== null) {
+            options.push({
+                num: match[1],
+                title: match[2].trim()
+            });
+        }
+
+        // If no options exist, parse tasks / checkboxes
+        if (options.length === 0) {
+            const lines = content.split('\n');
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('`')) return;
+                
+                // Match - [ ] or - [x]
+                if (trimmed.match(/^-\s*\[[ x]\]\s*(.+)/i)) {
+                    const tMatch = trimmed.match(/^-\s*\[[ x]\]\s*(.+)/i);
+                    tasks.push(tMatch[1].trim());
+                }
+            });
+        }
+    }
+
+    const container = document.getElementById('floatingOptionsContainer');
+    if (!container) return;
+
+    // Reset container contents and slide up
+    container.innerHTML = '';
+    container.style.display = 'flex';
+
+    if (options.length > 0) {
+        // --- Option Cards Mode ---
+        let listHtml = '';
+        options.forEach((opt, idx) => {
+            const isSelected = idx === 0 ? 'selected' : '';
+            listHtml += `
+                <div class="floating-option-card ${isSelected}" data-num="${opt.num}" data-title="${opt.title}">
+                    <div class="floating-option-num">${opt.num}</div>
+                    <div class="floating-option-text">${opt.title}</div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = `
+            <div class="floating-options-header">
+                <span class="floating-options-title">🔮 Alternatif Çözüm Yolları Mevcut</span>
+                <button class="floating-options-close" id="floatingCloseBtn">×</button>
+            </div>
+            <div class="floating-options-grid">
+                ${listHtml}
+            </div>
+            <div class="floating-actions-row">
+                <button class="floating-btn-skip" id="floatingSkipBtn">ATLA</button>
+                <button class="floating-btn-submit" id="floatingSubmitBtn">SEÇİLEN PLANI DERLE VE UYGULA</button>
+            </div>
+        `;
+
+        let selectedNum = options[0].num;
+        let selectedTitle = options[0].title;
+
+        // Card click handler
+        const cards = container.querySelectorAll('.floating-option-card');
+        cards.forEach(card => {
+            card.addEventListener('click', () => {
+                cards.forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedNum = card.getAttribute('data-num');
+                selectedTitle = card.getAttribute('data-title');
+            });
+        });
+
+        // Close/Skip handlers
+        container.querySelector('#floatingCloseBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+        });
+        container.querySelector('#floatingSkipBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+            appendMessage('assistant', 'Planlama aşaması atlandı. Karar bekleniyor.');
+        });
+
+        // Submit handler
+        container.querySelector('#floatingSubmitBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+            
+            // Switch mode
+            currentMode = 'build';
+            buildModeBtn.classList.add('active');
+            planModeBtn.classList.remove('active');
+            modeStatusText.textContent = 'BUILD MODU AKTİF';
+
+            // Append choice to history
+            const choiceText = `Seçilen ve onaylanan seçenek: [SEÇENEK ${selectedNum}]: ${selectedTitle}. Lütfen sadece bu seçeneğe göre derleme ve entegrasyonu tamamla.`;
+            appendMessage('assistant', `🛠️ **Seçenek ${selectedNum} seçildi:** ${selectedTitle}\n\nBuild Moduna geçildi. Değişiklikler uygulanıyor...`);
+            
+            messageHistory.push({
+                role: 'user',
+                content: choiceText
+            });
+
+            runBuildProcess();
+        });
+
+    } else if (tasks.length > 0) {
+        // --- Task Checklist Mode ---
+        let checklistHtml = '';
+        tasks.forEach((task, idx) => {
+            checklistHtml += `
+                <div class="plan-checklist-item" data-index="${idx}" style="margin-bottom: 4px;">
+                    <div class="checklist-checkbox"></div>
+                    <span class="checklist-item-text">${task}</span>
+                </div>
+            `;
+        });
+
+        container.innerHTML = `
+            <div class="floating-options-header">
+                <span class="floating-options-title">🛠️ Plan Görevlerini Seçin</span>
+                <button class="floating-options-close" id="floatingCloseBtn">×</button>
+            </div>
+            <div class="plan-checklist-container" style="max-height: 140px; margin-top: 4px;">
+                ${checklistHtml}
+            </div>
+            <div class="floating-actions-row">
+                <button class="floating-btn-skip" id="floatingSkipBtn">ATLA</button>
+                <button class="floating-btn-submit" id="floatingSubmitBtn">SEÇİLEN GÖREVLERİ UYGULA</button>
+            </div>
+        `;
+
+        // Checkbox click handlers
+        const items = container.querySelectorAll('.plan-checklist-item');
+        items.forEach(item => {
+            item.addEventListener('click', () => {
+                item.classList.toggle('unchecked');
+            });
+        });
+
+        // Close/Skip handlers
+        container.querySelector('#floatingCloseBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+        });
+        container.querySelector('#floatingSkipBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+            appendMessage('assistant', 'Plan onaylama atlandı.');
+        });
+
+        // Submit handler
+        container.querySelector('#floatingSubmitBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+
+            // Collect approved and skipped tasks
+            const approved = [];
+            const skipped = [];
+            items.forEach(item => {
+                const text = item.querySelector('.checklist-item-text').textContent;
+                if (item.classList.contains('unchecked')) {
+                    skipped.push(text);
+                } else {
+                    approved.push(text);
+                }
+            });
+
+            // Switch mode
+            currentMode = 'build';
+            buildModeBtn.classList.add('active');
+            planModeBtn.classList.remove('active');
+            modeStatusText.textContent = 'BUILD MODU AKTİF';
+
+            // Construct message content
+            let choiceText = 'Plan onaylandı!\n\n**Uygulanacak Görevler:**\n';
+            approved.forEach(t => choiceText += `- ${t}\n`);
+            if (skipped.length > 0) {
+                choiceText += '\n**Atlanacak/Uygulanmayacak Görevler:**\n';
+                skipped.forEach(t => choiceText += `- ${t}\n`);
+            }
+
+            appendMessage('assistant', `🛠️ **Seçilen plan görevleri onaylandı.** (${approved.length} görev seçildi, ${skipped.length} atlandı).\n\nBuild Moduna geçildi. Değişiklikler uygulanıyor...`);
+
+            messageHistory.push({
+                role: 'user',
+                content: choiceText + '\nLütfen sadece onaylanan görevleri uygulamaya başla.'
+            });
+
+            runBuildProcess();
+        });
+
+    } else {
+        // --- Default Mode ---
+        container.innerHTML = `
+            <div class="floating-options-header">
+                <span class="floating-options-title">🔮 PLAN HAZIRLANDI</span>
+                <button class="floating-options-close" id="floatingCloseBtn">×</button>
+            </div>
+            <div style="font-size: 11px; color: var(--text-primary); margin-top: 4px; margin-bottom: 8px;">
+                Yapay zekanın planını onaylayıp Build Moduna geçerek değişiklikleri uygulamak ister misiniz?
+            </div>
+            <div class="floating-actions-row">
+                <button class="floating-btn-skip" id="floatingSkipBtn">İPTAL</button>
+                <button class="floating-btn-submit" id="floatingSubmitBtn">PLANI ONAYLA VE DERLE</button>
+            </div>
+        `;
+
+        container.querySelector('#floatingCloseBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+        });
+        container.querySelector('#floatingSkipBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+        });
+
+        container.querySelector('#floatingSubmitBtn').addEventListener('click', () => {
+            container.style.display = 'none';
+            currentMode = 'build';
+            buildModeBtn.classList.add('active');
+            planModeBtn.classList.remove('active');
+            modeStatusText.textContent = 'BUILD MODU AKTİF';
+            appendMessage('assistant', 'Plan onaylandı! 🛠️ Build Moduna geçildi. Değişiklikleri uygulamaya başlıyorum.');
+            runBuildProcess();
+        });
+    }
 }
 
 // --- Network HTTP Calls ---
 async function executeUnityTool(name, args) {
     try {
-        const response = await fetch(`${UNITY_URL}/tools/${name}`, {
+        const response = await fetch(`${getUnityUrl()}/tools/${name}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(args)
@@ -1031,8 +1674,12 @@ async function executeUnityTool(name, args) {
 
         // Forward C# tool execution warnings/errors to command line terminal
         if (innerData && innerData.success === false && innerData.error) {
+            let errorMsg = innerData.error;
+            if (typeof errorMsg === 'object' && errorMsg !== null) {
+                errorMsg = errorMsg.message || JSON.stringify(errorMsg);
+            }
             if (window.electronAPI && window.electronAPI.logToTerminal) {
-                window.electronAPI.logToTerminal('warn', `Unity Tool Hatası (${name}): ${innerData.error}`);
+                window.electronAPI.logToTerminal('warn', `Unity Tool Hatası (${name}): ${errorMsg}`);
             }
         }
         return innerData;
@@ -1044,19 +1691,170 @@ async function executeUnityTool(name, args) {
     }
 }
 
-async function callLLM(apiMessages, useTools = false) {
+// --- Multi-Agent (OKS) Configurations & Mappings ---
+const AGENT_TOOLS = {
+    orchestrator: ['capture_scene_view', 'capture_game_view', 'get_project_info', 'get_scene_hierarchy'],
+    scripting: ['write_script', 'get_compile_status'],
+    modeling: ['create_probuilder_shape', 'set_component_property', 'list_assets'],
+    gui: ['add_component', 'set_component_property', 'prefab_tools'],
+    audio: ['add_component', 'set_component_property', 'list_assets'],
+    layout: ['add_component', 'set_component_property', 'perform_undo', 'perform_redo']
+};
+
+const AGENT_PROMPTS = {
+    orchestrator: `Sen Orkestra Şefi (Orchestrator Agent) ajansın. Görevin, kullanıcının Unity geliştirme hedefini alıp analiz etmek, sahne durumunu incelemek ve alt uzman ajanlara (Kod Ajanı, Model Ajanı vb.) görev dağıtımı yapmaktır.
+Alt ajanları çağırmak için doğrudan metninde "[GÖREV] <AjanAdı>: <GörevDetayı>" biçiminde yönerge ver. 
+Örnek: "[GÖREV] scripting: CarController.cs dosyasına hız limiti ekle."
+Mevcut sahnede neler olduğunu anlamak için kamera ve hiyerarşi araçlarını kullanabilirsin.`,
+
+    scripting: `Sen Kod ve Mekanik Ajanı (Scripting Agent) ajansın. Sadece C# kodları yazmak, düzenlemek ve Unity derleme hatalarını gidermek senin uzmanlığındır. 
+Gereksiz sahne düzenlemeleri veya materyal atamaları yapma, sadece kod dosyaları oluştur/düzenle. 
+Kod yazdıktan sonra mutlaka derleme durumunu kontrol et ve hata varsa otomatik düzelt.`,
+
+    modeling: `Sen 3D Varlık ve Model Ajanı (Modeling/Mesh Agent) ajansın. Sahneye 3D mesh'ler yerleştirmek, model atamaları yapmak (sharedMesh) ve ProBuilder ile geometrik şekiller üretmek senin uzmanlığındır. 
+Kod yazmaya çalışma, sadece objelerin mesh ve model özelliklerini değiştir.`,
+
+    gui: `Sen Arayüz Tasarım Ajanı (GUI/UI Agent) ajansın. Sahneye Canvas, Panel, TMP (TextMeshPro) metinler, Butonlar ve HUD elemanları eklemek, UI düzenlerini ayarlamak senin uzmanlığındır.`,
+
+    audio: `Sen Ses ve Müzik Ajanı (Audio Agent) ajansın. Sahnedeki ses kaynaklarını (AudioSource), çalınacak müzikleri (AudioClip) ve ses tetikleyicilerini yönetmek senin uzmanlığındır.`,
+
+    layout: `Sen Düzen ve Fizik Ajanı (Layout & Physics Agent) ajansın. Sahnedeki nesnelerin RigidBody, Collider ve fiziksel özelliklerini ayarlamak, nesneleri konumlandırmak (transform) senin uzmanlığındır.`
+};
+
+function mapAgentName(name) {
+    const clean = name.toLowerCase().trim();
+    if (clean.includes('script') || clean.includes('kod') || clean.includes('mekanik')) return 'scripting';
+    if (clean.includes('model') || clean.includes('mesh') || clean.includes('3d')) return 'modeling';
+    if (clean.includes('gui') || clean.includes('ui') || clean.includes('arayuz') || clean.includes('arayüz')) return 'gui';
+    if (clean.includes('audio') || clean.includes('sound') || clean.includes('ses') || clean.includes('muzik') || clean.includes('müzik')) return 'audio';
+    if (clean.includes('layout') || clean.includes('physics') || clean.includes('fizik') || clean.includes('duzen') || clean.includes('düzen')) return 'layout';
+    return null;
+}
+
+function getAgentDisplayName(key) {
+    if (key === 'orchestrator') return 'Orkestra Şefi';
+    if (key === 'scripting') return 'Kod & Mekanik Ajanı';
+    if (key === 'modeling') return '3D Varlık Ajanı';
+    if (key === 'gui') return 'Arayüz Tasarım Ajanı';
+    if (key === 'audio') return 'Ses & Müzik Ajanı';
+    if (key === 'layout') return 'Düzen & Fizik Ajanı';
+    return key;
+}
+
+function updateAgentStatus(agentKey, statusText) {
+    const card = document.getElementById(`agent-${agentKey}`);
+    const statusEl = document.getElementById(`status-${agentKey}`);
+    if (statusEl) {
+        statusEl.textContent = statusText;
+    }
+    if (card) {
+        card.classList.remove('active', 'success');
+        if (statusText.toLowerCase().includes('çalışıyor') || statusText.toLowerCase().includes('düşünüyor')) {
+            card.classList.add('active');
+            
+            // Auto switch to agents tab so user sees active agents
+            const agentsTabBtn = document.getElementById('tabAgentsBtn');
+            const agentsScreen = document.getElementById('agentsScreen');
+            if (agentsTabBtn && agentsScreen && !agentsTabBtn.classList.contains('active')) {
+                tabs.forEach(x => {
+                    if (x.btn) x.btn.classList.remove('active');
+                    if (x.screen) x.screen.classList.remove('active');
+                });
+                agentsTabBtn.classList.add('active');
+                agentsScreen.classList.add('active');
+                activeDashboardTab = 'agents';
+            }
+        } else if (statusText.toLowerCase().includes('tamamladı')) {
+            card.classList.add('success');
+        }
+    }
+}
+
+async function callLLM(apiMessages, useTools = false, agentName = 'orchestrator') {
     const endpoint = endpointInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
     const model = modelSelect.value;
 
+    // Safety check: Truncate/summarize very long intermediate tool/assistant messages to prevent context limit errors
+    const sanitizedMessages = apiMessages.map((msg, index) => {
+        if (index === 0 || index === apiMessages.length - 1) {
+            return msg;
+        }
+
+        const copy = { ...msg };
+
+        if (copy.role === 'user') {
+            if (Array.isArray(copy.content)) {
+                copy.content = copy.content.map(block => {
+                    if (block.type === 'image_url') {
+                        return { type: 'text', text: '[Görsel verisi önceki turlardan temizlendi]' };
+                    }
+                    return { ...block };
+                });
+            }
+            if (copy.image_url) {
+                delete copy.image_url;
+            }
+        }
+
+        if (copy.role === 'tool' && copy.content && copy.content.length > 2500) {
+            try {
+                const parsed = JSON.parse(copy.content);
+                if (parsed && typeof parsed === 'object') {
+                    if (parsed.hierarchy) {
+                        copy.content = JSON.stringify({
+                            success: parsed.success,
+                            hierarchy_summary: `[Kısaltıldı: ${parsed.hierarchy.length} kök obje bulundu. Sahne ağacı token sınırını korumak için sıkıştırıldı.]`
+                        });
+                        return copy;
+                    }
+                    if (parsed.assets) {
+                        copy.content = JSON.stringify({
+                            success: parsed.success,
+                            assets_summary: `[Kısaltıldı: ${parsed.assets.length} dosya listelendi. Klasör yapısı token sınırını korumak için sıkıştırıldı.]`
+                        });
+                        return copy;
+                    }
+                    if (parsed.logs) {
+                        copy.content = JSON.stringify({
+                            success: parsed.success,
+                            logs_summary: `[Kısaltıldı: ${parsed.logs.length} konsol satırı listelendi. Loglar sıkıştırıldı.]`
+                        });
+                        return copy;
+                    }
+                }
+            } catch (e) {}
+            copy.content = copy.content.substring(0, 2500) + "\n... [Büyük yanıt içeriği token sınırını aşmamak için sıkıştırıldı] ...";
+        }
+
+        if (copy.role === 'assistant' && copy.content && copy.content.length > 3000) {
+            copy.content = copy.content.substring(0, 3000) + "\n... [Büyük asistan yanıt içeriği sıkıştırıldı] ...";
+        }
+
+        return copy;
+    });
+
+    let finalMessages = sanitizedMessages;
+    if (agentName && AGENT_PROMPTS[agentName]) {
+        finalMessages = [...sanitizedMessages];
+        finalMessages[0] = {
+            role: 'system',
+            content: AGENT_PROMPTS[agentName]
+        };
+    }
+
     const requestBody = {
         model: model,
-        messages: apiMessages,
+        messages: finalMessages,
         temperature: 0.2
     };
 
     if (useTools) {
-        requestBody.tools = TOOLS;
+        let activeTools = TOOLS;
+        if (agentName && AGENT_TOOLS[agentName]) {
+            activeTools = TOOLS.filter(t => AGENT_TOOLS[agentName].includes(t.function.name));
+        }
+        requestBody.tools = activeTools;
         requestBody.tool_choice = 'auto';
     }
 
@@ -1111,13 +1909,37 @@ function clearStatusMessage() {
 
 async function handleSendMessage() {
     const text = chatInput.value.trim();
-    if (!text || isChatActive) return;
+    if (!text && !attachedImageBase64) return;
+    if (isChatActive) return;
 
     chatInput.value = '';
     chatInput.style.height = 'auto';
     
-    appendMessage('user', text);
-    messageHistory.push({ role: 'user', content: text });
+    appendMessage('user', text, '', 0, attachedImageBase64 || '');
+
+    let userMsgContent = text;
+    if (attachedImageBase64) {
+        userMsgContent = [
+            { type: 'text', text: text || 'Bu görseli analiz et.' }
+        ];
+        userMsgContent.push({
+            type: 'image_url',
+            image_url: { url: attachedImageBase64 }
+        });
+    }
+
+    const newMsg = { role: 'user', content: userMsgContent };
+    if (attachedImageBase64) {
+        newMsg.image_url = attachedImageBase64;
+    }
+    messageHistory.push(newMsg);
+
+    // Clear attached image preview UI immediately on send
+    attachedImageBase64 = null;
+    if (imagePreviewContainer) {
+        imagePreviewContainer.style.display = 'none';
+        attachedImagePreview.src = '';
+    }
 
     isChatActive = true;
     sendBtn.disabled = true;
@@ -1138,6 +1960,12 @@ async function handleSendMessage() {
         isChatActive = false;
         sendBtn.disabled = false;
         
+        attachedImageBase64 = null;
+        if (imagePreviewContainer) {
+            imagePreviewContainer.style.display = 'none';
+            attachedImagePreview.src = '';
+        }
+        
         // Filter out intermediate tool result messages, and strip tool_calls from assistant messages
         messageHistory = messageHistory
             .filter(msg => msg.role === 'user' || (msg.role === 'assistant' && msg.content))
@@ -1151,7 +1979,35 @@ async function handleSendMessage() {
         // Keep only the last 14 messages (approx. 7 turns) to prevent 400 Bad Request Context Limit Exceeded errors
         const MAX_HISTORY = 14;
         if (messageHistory.length > MAX_HISTORY) {
+            const removedMessages = messageHistory.slice(0, messageHistory.length - MAX_HISTORY);
             messageHistory = messageHistory.slice(messageHistory.length - MAX_HISTORY);
+
+            let newSummaryItems = [];
+            removedMessages.forEach(msg => {
+                if (msg.role === 'user' && msg.content) {
+                    newSummaryItems.push(`User requested: "${msg.content.substring(0, 80)}"`);
+                } else if (msg.role === 'assistant' && msg.content) {
+                    if (msg.content.includes("```")) {
+                        newSummaryItems.push("Assistant performed editor modifications.");
+                    } else {
+                        newSummaryItems.push(`Assistant replied: "${msg.content.substring(0, 80)}..."`);
+                    }
+                }
+            });
+
+            if (newSummaryItems.length > 0) {
+                let aggregate = newSummaryItems.join("\n- ");
+                if (historySummary) {
+                    historySummary += "\n- " + aggregate;
+                } else {
+                    historySummary = "Önceki sohbet adımlarının özeti:\n- " + aggregate;
+                }
+
+                const lines = historySummary.split("\n");
+                if (lines.length > 12) {
+                    historySummary = "Önceki sohbet adımlarının özeti:\n" + lines.slice(lines.length - 10).join("\n");
+                }
+            }
         }
 
         // Auto-save the current conversation history state
@@ -1162,185 +2018,183 @@ async function handleSendMessage() {
     }
 }
 
-async function runPlanProcess() {
-    let continueLoop = true;
-    let loopCount = 0;
-    const maxLoops = 6; // Limit loops for planning to avoid infinite tool calls
-    let hasExecutedTools = false;
-    let hasSentTextMessageAfterTools = false;
+async function sendChatToUnity(mode) {
+    const endpoint = endpointInput.value.trim();
+    const apiKey = apiKeyInput.value.trim();
+    const model = modelSelect.value;
 
-    while (continueLoop && loopCount < maxLoops) {
-        loopCount++;
-        
-        let systemPrompt = PLAN_SYSTEM_PROMPT;
-        if (deepThinkingToggle && deepThinkingToggle.checked) {
-            systemPrompt += "\n\nÖNEMLİ: Cevap vermeden önce detaylı ve aşamalı düşünme sürecini mutlaka <think>...</think> etiketleri arasında yaz.";
+    const disabledAgents = [];
+    ['scripting', 'modeling', 'gui', 'audio', 'layout'].forEach(k => {
+        const el = document.getElementById(`agentEnable_${k}`);
+        if (el && !el.checked) {
+            disabledAgents.push(k);
+        }
+    });
+
+    const requestPayload = {
+        apiKey: apiKey,
+        endpoint: endpoint,
+        model: model,
+        mode: mode,
+        messages: messageHistory,
+        tools: TOOLS,
+        deepThinking: deepThinkingToggle ? deepThinkingToggle.checked : false,
+        temperature: parseFloat(tempInput.value) || 0.2,
+        maxTokens: parseInt(maxTokensInput.value) || 4096,
+        customPrompt: customPromptInput.value.trim(),
+        maxLoops: parseInt(maxLoopsInput.value) || 6,
+        disabledAgents: disabledAgents
+    };
+
+    setStatusMessage("🤖 Orkestra Şefi C# tarafında çalışıyor...");
+
+    if (mode === 'build') {
+        ['scripting', 'modeling', 'gui', 'audio', 'layout'].forEach(k => {
+            updateAgentStatus(k, 'Boşta');
+        });
+    }
+
+    const thinkingPlaceholder = appendThinkingPlaceholder();
+
+    try {
+        const response = await fetch(`${getUnityUrl()}/chat/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestPayload)
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`C# Orkestrasyon Hatası: ${errText}`);
         }
 
-        const apiMessages = [
-            { role: 'system', content: systemPrompt },
-            ...messageHistory
-        ];
+        const result = await response.json();
+        clearStatusMessage();
 
-        setStatusMessage("🤖 Yapay zeka yanıt/plan taslağı hazırlıyor...");
-        const startTime = Date.now();
-        const result = await callLLM(apiMessages, true);
-        const durationSeconds = Math.round((Date.now() - startTime) / 1000);
-        const choice = result.choices[0];
-        const msg = choice.message;
-
-        if (msg.content) {
-            clearStatusMessage();
-            appendMessage('assistant', msg.content, msg.reasoning_content || '', durationSeconds);
-            messageHistory.push({ role: 'assistant', content: msg.content });
-            if (hasExecutedTools) {
-                hasSentTextMessageAfterTools = true;
-            }
+        if (!result || !result.success) {
+            throw new Error(result.error || "Bilinmeyen sunucu hatası");
         }
 
-        if (msg.tool_calls && msg.tool_calls.length > 0) {
-            hasExecutedTools = true;
-            messageHistory.push(msg);
+        // Update token usage counter
+        const tokenBadge = document.getElementById('tokenCounterBadge');
+        const tokenText = document.getElementById('tokenCounterText');
+        if (tokenBadge && tokenText && typeof result.totalTokens !== 'undefined') {
+            tokenBadge.style.display = 'inline-flex';
+            const formatNum = (num) => num >= 1000 ? (num / 1000).toFixed(1) + 'k' : num;
+            tokenText.textContent = `${formatNum(result.totalTokens)} / 150k`;
+            tokenText.title = `Prompt: ${result.promptTokens.toLocaleString()} | Completion: ${result.completionTokens.toLocaleString()} | Total: ${result.totalTokens.toLocaleString()}`;
+        }
 
-            const toolResponses = [];
-            for (const toolCall of msg.tool_calls) {
-                const name = toolCall.function.name;
-                const args = JSON.parse(toolCall.function.arguments);
-                
-                let details = '';
-                if (args.asset_path) details = `: ${args.asset_path}`;
-                else if (args.gameobject_path) details = `: ${args.gameobject_path}`;
-                else if (args.path) details = `: ${args.path}`;
-                
-                setStatusMessage(`⚙️ Unity aracı çalıştırılıyor: <strong>${name}</strong>${details}...`);
-                
-                // Show tools execution inside the chat
-                const uiBox = appendToolBox(name, args);
-                
-                // Execute the tool
-                const output = await executeUnityTool(name, args);
-                
-                if (uiBox) {
-                    uiBox.updateStatus(output.success !== false ? 'Tamamlandı' : 'Hata Oluştu', output.success === false);
-                    uiBox.appendOutput(output);
+        if (result.agentStates && Array.isArray(result.agentStates)) {
+            result.agentStates.forEach(update => {
+                updateAgentStatus(update.agent, update.status);
+            });
+        }
+
+        if (result.toolExecutions && Array.isArray(result.toolExecutions)) {
+            result.toolExecutions.forEach(exec => {
+                let argsObj = {};
+                try {
+                    argsObj = JSON.parse(exec.arguments);
+                } catch(e) {
+                    argsObj = exec.arguments;
                 }
+                let outputObj = {};
+                try {
+                    outputObj = JSON.parse(exec.output);
+                } catch(e) {
+                    outputObj = exec.output;
+                }
+                const uiBox = appendToolBox(exec.name, argsObj);
+                if (uiBox) {
+                    uiBox.updateStatus(outputObj.success !== false ? 'Tamamlandı' : 'Hata Oluştu', outputObj.success === false);
+                    uiBox.appendOutput(outputObj);
+                }
+            });
+        }
 
-                toolResponses.push({
-                    role: 'tool',
-                    tool_call_id: toolCall.id,
-                    name: name,
-                    content: JSON.stringify(output)
-                });
+        if (result.messages && Array.isArray(result.messages)) {
+            result.messages.forEach(msg => {
+                messageHistory.push(msg);
+
+                if (msg.role === 'assistant') {
+                    appendMessage('assistant', msg.content, msg.reasoning_content || '');
+                } else if (msg.role === 'user') {
+                    appendMessage('assistant', `ℹ️ *${msg.content}*`);
+                }
+            });
+        }
+
+        const allKeys = ['orchestrator', 'scripting', 'modeling', 'gui', 'audio', 'layout'];
+        allKeys.forEach(k => {
+            const card = document.getElementById(`agent-${k}`);
+            if (card) {
+                card.classList.remove('active');
+                const statusEl = document.getElementById(`status-${k}`);
+                if (statusEl && statusEl.textContent.includes('Tamamladı')) {
+                    card.classList.add('success');
+                }
             }
-
-            messageHistory.push(...toolResponses);
-        } else {
-            continueLoop = false;
+        });
+    } finally {
+        if (thinkingPlaceholder) {
+            thinkingPlaceholder.remove();
+        }
+        if (thinkingInterval) {
+            clearInterval(thinkingInterval);
         }
     }
+}
 
-    clearStatusMessage();
-    
-    if (hasExecutedTools && !hasSentTextMessageAfterTools) {
-        const fallbackMsg = "📋 İnceleme tamamlandı. Lütfen yukarıdaki araç çıktılarından plan detaylarını kontrol edin.";
-        appendMessage('assistant', fallbackMsg);
-        messageHistory.push({ role: 'assistant', content: fallbackMsg });
-    }
-    
+async function runPlanProcess() {
+    await sendChatToUnity('plan');
     appendPlanConfirmPanel();
 }
 
 async function runBuildProcess() {
-    let continueLoop = true;
-    let loopCount = 0;
-    const maxLoops = 10;
-    let hasExecutedTools = false;
-    let hasSentTextMessageAfterTools = false;
-
-    while (continueLoop && loopCount < maxLoops) {
-        loopCount++;
-        
-        let systemPrompt = BUILD_SYSTEM_PROMPT;
-        if (deepThinkingToggle && deepThinkingToggle.checked) {
-            systemPrompt += "\n\nÖNEMLİ: Cevap vermeden önce detaylı ve aşamalı düşünme sürecini mutlaka <think>...</think> etiketleri arasında yaz.";
-        }
-
-        const apiMessages = [
-            { role: 'system', content: systemPrompt },
-            ...messageHistory
-        ];
-
-        setStatusMessage("🤖 Yapay zeka kodu yazıyor ve sahneyi güncelliyor...");
-        const startTime = Date.now();
-        const result = await callLLM(apiMessages, true);
-        const durationSeconds = Math.round((Date.now() - startTime) / 1000);
-        const choice = result.choices[0];
-        const msg = choice.message;
-
-        if (msg.content) {
-            clearStatusMessage();
-            appendMessage('assistant', msg.content, msg.reasoning_content || '', durationSeconds);
-            messageHistory.push({ role: 'assistant', content: msg.content });
-            if (hasExecutedTools) {
-                hasSentTextMessageAfterTools = true;
-            }
-        }
-
-        if (msg.tool_calls && msg.tool_calls.length > 0) {
-            hasExecutedTools = true;
-            messageHistory.push(msg);
-
-            const toolResponses = [];
-            for (const toolCall of msg.tool_calls) {
-                const name = toolCall.function.name;
-                const args = JSON.parse(toolCall.function.arguments);
-                
-                let details = '';
-                if (args.asset_path) details = `: ${args.asset_path}`;
-                else if (args.gameobject_path) details = `: ${args.gameobject_path}`;
-                else if (args.path) details = `: ${args.path}`;
-                
-                setStatusMessage(`🛠️ Değişiklikler Unity'ye aktarılıyor: <strong>${name}</strong>${details}...`);
-                
-                const uiBox = appendToolBox(name, args);
-                const output = await executeUnityTool(name, args);
-                
-                if (uiBox) {
-                    uiBox.updateStatus(output.success !== false ? 'Tamamlandı' : 'Hata Oluştu', output.success === false);
-                    uiBox.appendOutput(output);
-                }
-
-                toolResponses.push({
-                    role: 'tool',
-                    tool_call_id: toolCall.id,
-                    name: name,
-                    content: JSON.stringify(output)
-                });
-            }
-
-            messageHistory.push(...toolResponses);
-        } else {
-            continueLoop = false;
-        }
-    }
-    
-    clearStatusMessage();
-    
-    if (hasExecutedTools && !hasSentTextMessageAfterTools) {
-        const fallbackMsg = "🛠️ Tüm araç çağrıları başarıyla tamamlandı ve sahne güncellendi.";
-        appendMessage('assistant', fallbackMsg);
-        messageHistory.push({ role: 'assistant', content: fallbackMsg });
-    }
+    await sendChatToUnity('build');
 }
 
 // --- Chat History / Saved Conversations Implementation ---
+function secureWrite(key, data) {
+    try {
+        const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
+        const cipherKey = 42;
+        let scrambled = '';
+        for (let i = 0; i < plaintext.length; i++) {
+            scrambled += String.fromCharCode(plaintext.charCodeAt(i) ^ cipherKey);
+        }
+        const encoded = btoa(unescape(encodeURIComponent(scrambled)));
+        localStorage.setItem(key, encoded);
+    } catch (e) {
+        console.error("Storage encryption failed", e);
+    }
+}
+
+function secureRead(key) {
+    try {
+        const encoded = localStorage.getItem(key);
+        if (!encoded) return null;
+        const scrambled = decodeURIComponent(escape(atob(encoded)));
+        const cipherKey = 42;
+        let plaintext = '';
+        for (let i = 0; i < scrambled.length; i++) {
+            plaintext += String.fromCharCode(scrambled.charCodeAt(i) ^ cipherKey);
+        }
+        return plaintext;
+    } catch (e) {
+        console.error("Storage decryption failed", e);
+        return null;
+    }
+}
+
 function saveCurrentChat() {
     if (!messageHistory || messageHistory.length === 0) return;
 
     // Retrieve saved chats
     let savedConversations = [];
     try {
-        const raw = localStorage.getItem('unity_studio_saved_chats');
+        const raw = secureRead('unity_studio_saved_chats');
         if (raw) savedConversations = JSON.parse(raw);
     } catch (e) {
         savedConversations = [];
@@ -1380,7 +2234,7 @@ function saveCurrentChat() {
     // Sort by most recent timestamp
     savedConversations.sort((a, b) => b.timestamp - a.timestamp);
 
-    localStorage.setItem('unity_studio_saved_chats', JSON.stringify(savedConversations));
+    secureWrite('unity_studio_saved_chats', savedConversations);
     renderSavedChatsList();
 }
 
@@ -1392,7 +2246,7 @@ function renderSavedChatsList() {
 
     let savedConversations = [];
     try {
-        const raw = localStorage.getItem('unity_studio_saved_chats');
+        const raw = secureRead('unity_studio_saved_chats');
         if (raw) savedConversations = JSON.parse(raw);
     } catch (e) {
         savedConversations = [];
@@ -1436,7 +2290,7 @@ function renderSavedChatsList() {
 function loadChat(chatId) {
     let savedConversations = [];
     try {
-        const raw = localStorage.getItem('unity_studio_saved_chats');
+        const raw = secureRead('unity_studio_saved_chats');
         if (raw) savedConversations = JSON.parse(raw);
     } catch (e) {
         return;
@@ -1466,9 +2320,26 @@ function loadChat(chatId) {
     // We recreate message rows one by one
     messageHistory.forEach(msg => {
         if (msg.role === 'user') {
-            appendMessage('user', msg.content);
+            let text = '';
+            let imageUrl = '';
+            if (Array.isArray(msg.content)) {
+                const textBlock = msg.content.find(c => c.type === 'text');
+                const imageBlock = msg.content.find(c => c.type === 'image_url');
+                if (textBlock) text = textBlock.text;
+                if (imageBlock) imageUrl = imageBlock.image_url.url;
+            } else {
+                text = msg.content || '';
+                imageUrl = msg.image_url || '';
+            }
+            if (text.trim() !== '' || imageUrl !== '') {
+                appendMessage('user', text, '', 0, imageUrl);
+            }
         } else if (msg.role === 'assistant') {
-            appendMessage('assistant', msg.content);
+            const content = msg.content || '';
+            const reasoning = msg.reasoning_content || '';
+            if (content.trim() !== '' || reasoning.trim() !== '') {
+                appendMessage('assistant', content, reasoning);
+            }
         }
     });
 
@@ -1480,14 +2351,14 @@ function loadChat(chatId) {
 function deleteChat(chatId) {
     let savedConversations = [];
     try {
-        const raw = localStorage.getItem('unity_studio_saved_chats');
+        const raw = secureRead('unity_studio_saved_chats');
         if (raw) savedConversations = JSON.parse(raw);
     } catch (e) {
         return;
     }
 
     savedConversations = savedConversations.filter(c => c.id !== chatId);
-    localStorage.setItem('unity_studio_saved_chats', JSON.stringify(savedConversations));
+    secureWrite('unity_studio_saved_chats', savedConversations);
 
     // If deleted chat was the active one, start a new chat
     if (currentChatId === chatId) {

@@ -60,9 +60,9 @@ namespace UnityMCPBridge
                 return "{\"success\":false,\"error\":\"asset_path is required.\"}";
             }
 
-            if (!args.asset_path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            if (!MCPToolRegistry.IsPathSafe(args.asset_path))
             {
-                return "{\"success\":false,\"error\":\"Path must start with 'Assets/' for security.\"}";
+                return "{\"success\":false,\"error\":\"Path must be inside 'Assets/' directory and not perform traversal for security.\"}";
             }
 
             string fullPath = Path.Combine(Directory.GetCurrentDirectory(), args.asset_path);
@@ -90,9 +90,9 @@ namespace UnityMCPBridge
                 return "{\"success\":false,\"error\":\"asset_path and content are required.\"}";
             }
 
-            if (!args.asset_path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            if (!MCPToolRegistry.IsPathSafe(args.asset_path))
             {
-                return "{\"success\":false,\"error\":\"Path must start with 'Assets/' for security.\"}";
+                return "{\"success\":false,\"error\":\"Path must be inside 'Assets/' directory and not perform traversal for security.\"}";
             }
 
             string fullPath = Path.Combine(Directory.GetCurrentDirectory(), args.asset_path);
@@ -126,9 +126,9 @@ namespace UnityMCPBridge
                 return "{\"success\":false,\"error\":\"asset_path is required.\"}";
             }
 
-            if (!args.asset_path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            if (!MCPToolRegistry.IsPathSafe(args.asset_path))
             {
-                return "{\"success\":false,\"error\":\"Path must start with 'Assets/' for security.\"}";
+                return "{\"success\":false,\"error\":\"Path must be inside 'Assets/' directory and not perform traversal for security.\"}";
             }
 
             string fullPath = Path.Combine(Directory.GetCurrentDirectory(), args.asset_path);

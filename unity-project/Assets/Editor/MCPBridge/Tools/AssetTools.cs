@@ -38,9 +38,9 @@ namespace UnityMCPBridge
                 return "{\"success\":false,\"error\":\"gameobject_path and save_path are required.\"}";
             }
 
-            if (!args.save_path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            if (!MCPToolRegistry.IsPathSafe(args.save_path))
             {
-                return "{\"success\":false,\"error\":\"save_path must start with 'Assets/' for security.\"}";
+                return "{\"success\":false,\"error\":\"save_path must be inside 'Assets/' directory and not perform traversal for security.\"}";
             }
 
             if (!args.save_path.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
@@ -84,9 +84,9 @@ namespace UnityMCPBridge
             string folder = args?.folder_path ?? "Assets";
             string filter = args?.filter ?? string.Empty;
 
-            if (!folder.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+            if (!MCPToolRegistry.IsPathSafe(folder))
             {
-                return "{\"success\":false,\"error\":\"folder_path must start with 'Assets' for security.\"}";
+                return "{\"success\":false,\"error\":\"folder_path must be inside 'Assets/' directory and not perform traversal for security.\"}";
             }
 
             try
@@ -102,6 +102,7 @@ namespace UnityMCPBridge
                         string[] files = Directory.GetFiles(fullFolderPath, "*.*", SearchOption.AllDirectories);
                         foreach (string file in files)
                         {
+                            if (assets.Count >= 2000) break;
                             string relativePath = file.Substring(currentDir.Length + 1).Replace('\\', '/');
                             
                             // Exclude meta files and hidden paths
@@ -121,6 +122,7 @@ namespace UnityMCPBridge
                     string[] guids = AssetDatabase.FindAssets(filter, searchFolders);
                     foreach (var guid in guids)
                     {
+                        if (assets.Count >= 2000) break;
                         string path = AssetDatabase.GUIDToAssetPath(guid);
                         if (!string.IsNullOrEmpty(path) && !assets.Contains(path) && !Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), path)))
                         {
@@ -130,7 +132,8 @@ namespace UnityMCPBridge
                 }
 
                 string assetsJson = "[" + string.Join(",", assets.ConvertAll(a => $"\"{MCPToolRegistry.EscapeJson(a)}\"")) + "]";
-                return $"{{\"success\":true,\"assets\":{assetsJson}}}";
+                string messageNote = assets.Count >= 2000 ? ",\"message\":\"[Varlık listesi 2000 adet ile sınırlandırıldı. Daha fazlasını görmek için alt klasörleri sorgulayabilirsiniz.]\"" : "";
+                return $"{{\"success\":true,\"assets\":{assetsJson}{messageNote}}}";
             }
             catch (Exception ex)
             {

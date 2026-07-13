@@ -54,6 +54,27 @@ namespace UnityMCPBridge
             var args = JsonUtility.FromJson<CaptureArgs>(jsonArgs);
             string quality = args?.quality ?? "medium";
 
+            if (EditorApplication.isPlaying)
+            {
+                try
+                {
+                    Texture2D tex = ScreenCapture.CaptureScreenshotAsTexture();
+                    if (tex != null)
+                    {
+                        byte[] bytes = tex.EncodeToPNG();
+                        string base64 = Convert.ToBase64String(bytes);
+                        int texW = tex.width;
+                        int texH = tex.height;
+                        UnityEngine.Object.DestroyImmediate(tex);
+                        return $"{{\"success\":true,\"image\":\"{base64}\",\"mimeType\":\"image/png\",\"width\":{texW},\"height\":{texH}}}";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[MCPBridge] PlayMode ScreenCapture failed, falling back to camera render: {ex.Message}");
+                }
+            }
+
             Camera cam = Camera.main;
             if (cam == null)
             {
@@ -72,6 +93,11 @@ namespace UnityMCPBridge
         {
             var args = JsonUtility.FromJson<CaptureArgs>(jsonArgs);
             string quality = args?.quality ?? "medium";
+
+            if (EditorApplication.isPlaying)
+            {
+                return CaptureGameView(jsonArgs);
+            }
 
             Camera cam = GetSceneViewCamera();
             if (cam == null)

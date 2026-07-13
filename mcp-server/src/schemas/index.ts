@@ -109,3 +109,55 @@ export const ManagePackageSchema = z.object({
   package_name: z.string().optional().describe('The package ID (e.g., com.unity.probuilder) - only required for install/remove actions.'),
 });
 
+export const GetSceneHierarchySchema = z.object({
+  max_depth: z.number().optional().describe('Optional depth limit for serialization (e.g. 1 returns only root objects, 0 or omitted is unlimited).'),
+});
+
+export const CreateProbuilderShapeSchema = z.object({
+  shape_type: z.string().describe('The ProBuilder shape to create ("cube", "plane").'),
+  size: z.array(z.number()).optional().describe('Size dimensions of the shape as [x, y, z].'),
+  position: z.array(z.number()).optional().describe('World space position [x, y, z] to place the shape.'),
+});
+
+export const ApplyMaterialSchema = z.object({
+  gameobject_path: z.string().describe('The path of the target GameObject (e.g., "/Cube").'),
+  material_path: z.string().describe('The project path to the material asset (e.g., "Assets/Materials/Red.mat").'),
+});
+
+export const SetMaterialPropertiesSchema = z.object({
+  gameobject_path: z.string().describe('The path of the target GameObject.'),
+  color: z.string().optional().describe('Hex color (e.g. "#FF0000") or RGB float array "[1,0,0]".'),
+  metallic: z.number().optional().describe('Metallic value between 0.0 and 1.0.'),
+  smoothness: z.number().optional().describe('Smoothness/Glossiness value between 0.0 and 1.0.'),
+});
+
+export const SetPhysicsPropertiesSchema = z.object({
+  gameobject_path: z.string().describe('The path of the target GameObject.'),
+  add_rigidbody: z.boolean().optional().describe('Whether to force add a Rigidbody if not present.'),
+  mass: z.number().optional().describe('The mass of the Rigidbody.'),
+  use_gravity: z.enum(['true', 'false']).optional().describe('Whether to enable or disable gravity.'),
+  collider_type: z.enum(['box', 'sphere', 'capsule', 'mesh', 'none']).optional().describe('The collider shape to add.'),
+});
+
+export const ConfigureCinemachineSchema = z.object({
+  gameobject_path: z.string().describe('The path of the Cinemachine camera GameObject.'),
+  follow_path: z.string().optional().describe('The path of the GameObject to follow.'),
+  lookat_path: z.string().optional().describe('The path of the GameObject to look at.'),
+  distance: z.number().optional().describe('Camera offset distance.'),
+});
+
+export const InstantiatePrefabSchema = z.object({
+  prefab_path: z.string().describe('The project path to the prefab asset (e.g., "Assets/Prefabs/Car.prefab").'),
+  position: z.array(z.number()).optional().describe('Position [x, y, z] to place the instance.'),
+  parent_path: z.string().optional().describe('The path of the parent GameObject.'),
+  name: z.string().optional().describe('New name for the instantiated GameObject.'),
+});
+
+export const ExecuteEditorCodeSchema = z.object({
+  code: z.string().describe('The complete C# script code to compile and execute. Must contain a public static method: public static string Execute()'),
+});
+
+export const PerformUndoSchema = z.object({});
+export const PerformRedoSchema = z.object({});
+
+

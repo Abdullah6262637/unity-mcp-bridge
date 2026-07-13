@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Reflection;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -72,11 +73,20 @@ namespace UnityMCPBridge
             var stopwatch = Stopwatch.StartNew();
             string unityVersion = Application.unityVersion;
 
+            if (!_handlers.ContainsKey(toolName))
+            {
+                DiscoverAndRegisterTools();
+            }
+
             if (_handlers.TryGetValue(toolName, out var handler))
             {
                 try
                 {
                     string handlerResult = handler(jsonArgs);
+                    if (handlerResult == "__DEFERRED__")
+                    {
+                        return "__DEFERRED__";
+                    }
                     stopwatch.Stop();
 
                     bool isSuccess = handlerResult.Contains("\"success\":true");
@@ -134,6 +144,27 @@ namespace UnityMCPBridge
                         .Replace("\n", "\\n")
                         .Replace("\r", "\\r")
                         .Replace("\t", "\\t");
+        }
+
+        public static bool IsPathSafe(string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath)) return false;
+            if (!relativePath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) &&
+                !relativePath.StartsWith("Assets\\", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            try
+            {
+                string projectDir = Directory.GetCurrentDirectory();
+                string fullPath = Path.GetFullPath(Path.Combine(projectDir, relativePath));
+                string assetsDir = Path.GetFullPath(Path.Combine(projectDir, "Assets"));
+                return fullPath.StartsWith(assetsDir, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
